@@ -1,0 +1,68 @@
+# ----------------------------------------
+# 📦 Flutter & Dart
+# ----------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# Symbolication and Obfuscation
+app.*.symbols
+app.*.map.json
+
+# ----------------------------------------
+# 💻 IDEs and Editors
+# ----------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+*.sublime-workspace
+*.sublime-project
+.vscode/
+
+# ----------------------------------------
+# 🛠️ Miscellaneous
+# ----------------------------------------
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# ----------------------------------------
+# 🤖 Android Specific
+# ----------------------------------------
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# ----------------------------------------
+# 🍏 macOS specific (if ever used)
+# ----------------------------------------
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata
+*.xcodeproj
+*.xcconfig
+*.plist
+*.pbxuser
+*.mode1v3
+*.mode2v3
+
+# ----------------------------------------
+# 🧪 Test related
+# ----------------------------------------
+coverage/
