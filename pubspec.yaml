@@ -21,6 +21,8 @@ dependencies:
   process_run: ^0.12.3+2
   confetti: ^0.8.0
   audioplayers: ^6.5.0
+  supabase_flutter: ^1.10.5
+  flutter_secure_storage: ^9.0.0
 
 dev_dependencies:
   flutter_test:

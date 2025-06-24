@@ -6,6 +6,8 @@ import '../models/pomodoro_settings.dart';
 import '../services/app_blocker_service.dart';
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'auth_screen.dart'; // assure-toi que ce fichier existe
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -109,7 +111,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     onPressed: () => _showBlockedAppsDialog(context),
                     icon: const Icon(Icons.block, color: Colors.black87),
                     tooltip: "Apps bloquées",
-                  ),
+                  ), 
+                  const SizedBox(height: 16),
+                      IconButton(
+                          icon: const Icon(Icons.logout),
+                          onPressed: () => _logout(context),
+                          tooltip: 'Déconnexion',
+                        ),
                 ],
               ),
             ),
@@ -223,11 +231,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: const Text("Annuler"),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               settings.focusDuration = int.tryParse(focusCtrl.text) ?? 25;
               settings.shortBreakDuration = int.tryParse(shortCtrl.text) ?? 5;
               settings.longBreakDuration = int.tryParse(longCtrl.text) ?? 15;
               timer.resetTimer();
+
+              // 🔐 Sauvegarde dans Supabase
+              final userId = Supabase.instance.client.auth.currentUser?.id;
+              if (userId != null) {
+                await Supabase.instance.client
+                    .from('pomodoro_settings')
+                    .upsert({
+                      'user_id': userId,
+                      'focus_duration': settings.focusDuration,
+                      'short_break_duration': settings.shortBreakDuration,
+                      'long_break_duration': settings.longBreakDuration,
+                    });
+              }
+
               Navigator.pop(context);
             },
             child: const Text("Enregistrer"),
@@ -282,6 +304,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
       ),
+    );
+  }
+
+  void _logout(BuildContext context) async {
+    await Supabase.instance.client.auth.signOut();
+
+    // Redirection vers la page d'authentification
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const AuthScreen()),
+      (route) => false,
     );
   }
 }

@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/pomodoro_settings.dart';
 import 'notification_service.dart';
 import 'app_blocker_service.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum PomodoroSessionType { focus, shortBreak, longBreak }
 
@@ -94,4 +94,34 @@ class TimerService extends ChangeNotifier {
   }
   final AppBlockerService _blocker = AppBlockerService.instance;
 
+  Future<void> loadSettingsFromSupabase() async {
+  final userId = Supabase.instance.client.auth.currentUser?.id;
+  if (userId == null) return;
+
+  final response = await Supabase.instance.client
+      .from('pomodoro_settings')
+      .select()
+      .eq('user_id', userId)
+      .maybeSingle();
+
+  if (response != null) {
+    settings.focusDuration = response['focus_duration'] ?? settings.focusDuration;
+    settings.shortBreakDuration = response['short_break_duration'] ?? settings.shortBreakDuration;
+    settings.longBreakDuration = response['long_break_duration'] ?? settings.longBreakDuration;
+    _setInitialDuration();
+    notifyListeners();
+  }
+}
+
+Future<void> saveSettingsToSupabase() async {
+  final userId = Supabase.instance.client.auth.currentUser?.id;
+  if (userId == null) return;
+
+  await Supabase.instance.client.from('pomodoro_settings').upsert({
+    'user_id': userId,
+    'focus_duration': settings.focusDuration,
+    'short_break_duration': settings.shortBreakDuration,
+    'long_break_duration': settings.longBreakDuration,
+  });
+}
 }
