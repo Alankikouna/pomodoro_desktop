@@ -1,3 +1,5 @@
+
+// Écran principal de l'application Pomodoro Desktop : gestion du minuteur, des réglages et des apps bloquées
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/timer_service.dart';
@@ -9,6 +11,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_screen.dart'; // assure-toi que ce fichier existe
 
+
+/// Écran principal affichant le minuteur Pomodoro, les boutons de session, les réglages et la déconnexion
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -16,21 +20,30 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+
+/// État de l'écran principal : gère les animations, le son, la confetti et les interactions
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  // Contrôleur pour l'animation de la barre latérale
   late final AnimationController _sidebarController;
+  // Contrôleur et animation pour le label de session
   late final AnimationController _labelAnimationController;
   late final Animation<Offset> _labelOffsetAnimation;
+  // Contrôleur pour les confettis
   late final ConfettiController _confettiController;
+  // Lecteur audio pour le son de succès
   final _audioPlayer = AudioPlayer();
+
 
   @override
   void initState() {
     super.initState();
+    // Animation d'entrée de la barre latérale
     _sidebarController = AnimationController(
       duration: const Duration(milliseconds: 700),
       vsync: this,
     )..forward();
 
+    // Animation pour le label de session
     _labelAnimationController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -43,8 +56,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeOut,
     ));
 
+    // Contrôleur pour les confettis de fin de session
     _confettiController = ConfettiController(duration: const Duration(seconds: 2));
   }
+
 
   @override
   void dispose() {
@@ -55,11 +70,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+
   @override
   Widget build(BuildContext context) {
+    // Récupère le service du timer et calcule la progression
     final timer = context.watch<TimerService>();
     final progress = timer.currentDuration.inSeconds / timer.totalDuration.inSeconds;
 
+    // Si la session est terminée, lance les confettis et le son
     if (timer.currentDuration.inSeconds == 0) {
       _confettiController.play();
       _audioPlayer.play(AssetSource('sounds/success.mp3'));
@@ -69,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       backgroundColor: const Color(0xFFF4F4F4),
       body: Row(
         children: [
+          // Barre latérale avec boutons de session, réglages, apps bloquées et déconnexion
           SlideTransition(
             position: Tween<Offset>(
               begin: const Offset(-1, 0),
@@ -83,47 +102,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Bouton focus
                   IconButton(
                     onPressed: () => timer.switchSession(PomodoroSessionType.focus),
                     icon: const Icon(Icons.timer, color: Colors.indigo),
                     tooltip: "Focus",
                   ),
                   const SizedBox(height: 16),
+                  // Bouton pause courte
                   IconButton(
                     onPressed: () => timer.switchSession(PomodoroSessionType.shortBreak),
                     icon: const Icon(Icons.coffee, color: Colors.green),
                     tooltip: "Pause courte",
                   ),
                   const SizedBox(height: 16),
+                  // Bouton pause longue
                   IconButton(
                     onPressed: () => timer.switchSession(PomodoroSessionType.longBreak),
                     icon: const Icon(Icons.bed, color: Colors.redAccent),
                     tooltip: "Pause longue",
                   ),
                   const SizedBox(height: 16),
+                  // Bouton réglages
                   IconButton(
                     onPressed: () => _showSettingsDialog(context, timer.settings, timer),
                     icon: const Icon(Icons.tune, color: Colors.grey),
                     tooltip: "Modifier durées",
                   ),
                   const SizedBox(height: 16),
+                  // Bouton apps bloquées
                   IconButton(
                     onPressed: () => _showBlockedAppsDialog(context),
                     icon: const Icon(Icons.block, color: Colors.black87),
                     tooltip: "Apps bloquées",
                   ), 
                   const SizedBox(height: 16),
-                      IconButton(
-                          icon: const Icon(Icons.logout),
-                          onPressed: () => _logout(context),
-                          tooltip: 'Déconnexion',
-                        ),
+                  // Bouton déconnexion
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    onPressed: () => _logout(context),
+                    tooltip: 'Déconnexion',
+                  ),
                 ],
               ),
             ),
           ),
 
-          // Main zone
+          // Zone principale : minuteur, label, confettis, boutons de contrôle
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
@@ -131,6 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   const Spacer(),
 
+                  // Minuteur circulaire et label animé
                   Stack(
                     alignment: Alignment.center,
                     children: [
@@ -150,6 +176,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
+                      // Confettis de fin de session
                       ConfettiWidget(
                         confettiController: _confettiController,
                         blastDirectionality: BlastDirectionality.explosive,
@@ -161,6 +188,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   const SizedBox(height: 24),
 
+                  // Boutons de contrôle (reset, play/pause)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -196,6 +224,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+
+  /// Affiche la boîte de dialogue pour modifier les durées Pomodoro
   void _showSettingsDialog(BuildContext context, PomodoroSettings settings, TimerService timer) {
     final focusCtrl = TextEditingController(text: settings.focusDuration.toString());
     final shortCtrl = TextEditingController(text: settings.shortBreakDuration.toString());
@@ -208,16 +238,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Champ focus
             TextField(
               controller: focusCtrl,
               decoration: const InputDecoration(labelText: "Focus"),
               keyboardType: TextInputType.number,
             ),
+            // Champ pause courte
             TextField(
               controller: shortCtrl,
               decoration: const InputDecoration(labelText: "Pause courte"),
               keyboardType: TextInputType.number,
             ),
+            // Champ pause longue
             TextField(
               controller: longCtrl,
               decoration: const InputDecoration(labelText: "Pause longue"),
@@ -232,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           TextButton(
             onPressed: () async {
+              // Met à jour les réglages et sauvegarde dans Supabase
               settings.focusDuration = int.tryParse(focusCtrl.text) ?? 25;
               settings.shortBreakDuration = int.tryParse(shortCtrl.text) ?? 5;
               settings.longBreakDuration = int.tryParse(longCtrl.text) ?? 15;
@@ -259,6 +293,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+
+  /// Affiche la boîte de dialogue pour gérer la liste des applications bloquées
   void _showBlockedAppsDialog(BuildContext context) {
     final blocker = AppBlockerService.instance;
     final controller = TextEditingController();
@@ -271,6 +307,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Liste des apps bloquées avec suppression possible
               for (final app in blocker.bannedApps)
                 ListTile(
                   title: Text(app),
@@ -282,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     },
                   ),
                 ),
+              // Champ pour ajouter une nouvelle app
               TextField(
                 controller: controller,
                 decoration: const InputDecoration(hintText: "Nom du processus (ex: Discord.exe)"),
@@ -307,6 +345,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Déconnecte l'utilisateur et redirige vers la page d'authentification
   void _logout(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
 
