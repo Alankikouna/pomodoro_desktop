@@ -1,7 +1,7 @@
 // Écran d'authentification (connexion/inscription) avec Supabase
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'signup_screen.dart'; // Assurez-vous d'importer votre écran d'inscription
+import 'signup_screen.dart';
 
 
 /// Écran permettant à l'utilisateur de se connecter ou de s'inscrire
@@ -72,47 +72,59 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Champ email
-                TextField(
-                  controller: emailCtrl,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  keyboardType: TextInputType.emailAddress,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return Center(
+            child: SingleChildScrollView(
+              child: Container(
+                width: isMobile ? double.infinity : 400,
+                padding: EdgeInsets.all(isMobile ? 16 : 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Connexion",
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 24),
+                    // Champ email
+                    TextField(
+                      controller: emailCtrl,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 12),
+                    // Champ mot de passe
+                    TextField(
+                      controller: passwordCtrl,
+                      decoration: const InputDecoration(labelText: 'Mot de passe'),
+                      obscureText: true,
+                    ),
+                    const SizedBox(height: 24),
+                    // Bouton de connexion/inscription ou loader
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : ElevatedButton(
+                            onPressed: _signInOrSignUp,
+                            child: const Text("Connexion / Inscription"),
+                          ),
+                    // Lien vers la page d'inscription
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SignupScreen()),
+                        );
+                      },
+                      child: const Text("Pas encore inscrit ? Créer un compte"),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                // Champ mot de passe
-                TextField(
-                  controller: passwordCtrl,
-                  decoration: const InputDecoration(labelText: 'Mot de passe'),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 24),
-                // Bouton de connexion/inscription ou loader
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                        onPressed: _signInOrSignUp,
-                        child: const Text("Connexion / Inscription"),
-                      ),
-                // Lien vers la page d'inscription
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SignupScreen()),
-                    );
-                  },
-                  child: const Text("Pas encore inscrit ? Créer un compte"),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

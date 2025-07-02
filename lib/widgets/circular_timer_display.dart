@@ -1,4 +1,3 @@
-
 // Widget d'affichage circulaire du minuteur Pomodoro
 import 'package:flutter/material.dart';
 
@@ -23,20 +22,21 @@ class CircularTimerDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size.width < 600 ? 200.0 : 300.0;
     // Formate les minutes et secondes pour l'affichage
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
 
     return SizedBox(
-      width: 250,
-      height: 250,
+      width: size,
+      height: size,
       child: Stack(
         alignment: Alignment.center,
         children: [
           // Cercle de progression
           SizedBox(
-            width: 250,
-            height: 250,
+            width: size,
+            height: size,
             child: CircularProgressIndicator(
               value: progress.clamp(0.0, 1.0), // S'assure que la valeur reste entre 0 et 1
               strokeWidth: 10,

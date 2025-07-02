@@ -1,4 +1,3 @@
-
 // Widget d'affichage du temps Pomodoro et boîte de dialogue de réglages
 import 'package:flutter/material.dart';
 import 'package:pomodoro_desktop/services/timer_service.dart';
@@ -19,10 +18,11 @@ class TimerDisplay extends StatelessWidget {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
 
+    final isWide = MediaQuery.of(context).size.width > 600;
     return Text(
       '$minutes:$seconds',
-      style: const TextStyle(
-        fontSize: 64,
+      style: TextStyle(
+        fontSize: isWide ? 72 : 48,
         fontWeight: FontWeight.bold,
       ),
     );

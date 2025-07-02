@@ -54,30 +54,41 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Inscription")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Champ email
-            TextField(
-              controller: emailCtrl,
-              decoration: const InputDecoration(labelText: 'Email'),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return Center(
+            child: SingleChildScrollView(
+              child: Container(
+                width: isMobile ? double.infinity : 400,
+                padding: EdgeInsets.all(isMobile ? 16 : 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Champ email
+                    TextField(
+                      controller: emailCtrl,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                    ),
+                    // Champ mot de passe
+                    TextField(
+                      controller: passwordCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: 'Mot de passe'),
+                    ),
+                    const SizedBox(height: 20),
+                    // Bouton d'inscription
+                    ElevatedButton(
+                      onPressed: _signUp,
+                      child: const Text("Créer un compte"),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            // Champ mot de passe
-            TextField(
-              controller: passwordCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Mot de passe'),
-            ),
-            const SizedBox(height: 20),
-            // Bouton d'inscription
-            ElevatedButton(
-              onPressed: _signUp,
-              child: const Text("Créer un compte"),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
