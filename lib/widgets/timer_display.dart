@@ -24,6 +24,7 @@ class TimerDisplay extends StatelessWidget {
       style: TextStyle(
         fontSize: isWide ? 72 : 48,
         fontWeight: FontWeight.bold,
+        color: Theme.of(context).textTheme.bodyLarge?.color, // 👈 couleur dynamique
       ),
     );
   }

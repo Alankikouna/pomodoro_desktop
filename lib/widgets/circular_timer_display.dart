@@ -10,6 +10,18 @@ class CircularTimerDisplay extends StatelessWidget {
   final double progress;
   /// Label de la session (ex: FOCUS, PAUSE)
   final String label;
+  /// Style de texte pour l'affichage du temps
+  final TextStyle textStyle;
+  /// Couleur de l'icône
+  final Color iconColor;
+  /// Fonction pour réinitialiser le minuteur
+  final VoidCallback resetTimer;
+  /// Indique si le minuteur est en cours d'exécution
+  final bool isRunning;
+  /// Fonction pour démarrer le minuteur
+  final VoidCallback startTimer;
+  /// Fonction pour arrêter le minuteur
+  final VoidCallback stopTimer;
 
 
   /// Constructeur du widget
@@ -18,6 +30,12 @@ class CircularTimerDisplay extends StatelessWidget {
     required this.duration,
     required this.progress,
     required this.label,
+    required this.textStyle,
+    this.iconColor = Colors.black,
+    required this.resetTimer,
+    required this.isRunning,
+    required this.startTimer,
+    required this.stopTimer,
   });
 
   @override
@@ -41,7 +59,9 @@ class CircularTimerDisplay extends StatelessWidget {
               value: progress.clamp(0.0, 1.0), // S'assure que la valeur reste entre 0 et 1
               strokeWidth: 10,
               backgroundColor: Colors.grey.shade300,
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.indigo),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).colorScheme.primary, // 👈 couleur dynamique selon le thème
+              ),
             ),
           ),
           // Affichage du temps et du label au centre
@@ -50,15 +70,21 @@ class CircularTimerDisplay extends StatelessWidget {
             children: [
               Text(
                 "$minutes:$seconds",
-                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                style: textStyle.copyWith(
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 label.toUpperCase(),
-                style: const TextStyle(fontSize: 16, letterSpacing: 2),
+                style: TextStyle(
+                  fontSize: 16,
+                  letterSpacing: 2,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );

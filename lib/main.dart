@@ -1,39 +1,59 @@
-// Point d'entrée principal de l'application Pomodoro Desktop
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:provider/provider.dart' as provider;
+import 'package:supabase_flutter/supabase_flutter.dart'; // <-- ajoute cet import
+import 'router.dart';
+import 'services/theme_service.dart';
 import 'services/timer_service.dart';
-import 'router.dart'; // <-- Ajoute cet import
 
-
-/// Initialise Flutter, Supabase et lance l'application
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Ajoute ceci AVANT tout le reste
   await Supabase.initialize(
     url: 'https://czxibvxxxfcxhsgrteea.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6eGlidnh4eGZjeGhzZ3J0ZWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3NTY4MTIsImV4cCI6MjA2NjMzMjgxMn0.0tv6cr2s-RgziLhN9V4vHUV3vq_KC5y6ItYPFjepXbE',
   );
-  runApp(const MyApp());
+
+  final themeService = ThemeService();
+  await themeService.loadTheme();
+
+  runApp(
+    provider.MultiProvider(
+      providers: [
+        provider.ChangeNotifierProvider(create: (_) => TimerService()),
+        provider.ChangeNotifierProvider.value(value: themeService),
+      ],
+      child: const PomodoroApp(),
+    ),
+  );
 }
 
-
-/// Widget racine de l'application : fournit le TimerService et configure le thème
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class PomodoroApp extends StatelessWidget {
+  const PomodoroApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TimerService(), // Fournit le service Pomodoro à toute l'app
-      child: MaterialApp.router(
-        title: 'Pomodoro Desktop',
-        theme: ThemeData.light(),
-        darkTheme: ThemeData.dark(),
-        themeMode: ThemeMode.system,
-        routerConfig: appRouter,
-        debugShowCheckedModeBanner: false,
+    final themeService = provider.Provider.of<ThemeService>(context);
+
+    return MaterialApp.router(
+      title: 'Pomodoro Desktop',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardColor: const Color(0xFF1E1E1E),
+        iconTheme: const IconThemeData(color: Colors.white70),
+        textTheme: ThemeData.dark().textTheme.apply(
+          bodyColor: Colors.white,
+          displayColor: Colors.white,
+        ),
+        colorScheme: const ColorScheme.dark().copyWith(
+          primary: Color(0xFFBB86FC),   // Violet doux
+          secondary: Color(0xFF03DAC6), // Bleu-vert clair
+        ),
       ),
+      themeMode: themeService.materialThemeMode,
+      routerConfig: appRouter,
     );
   }
 }

@@ -1,6 +1,6 @@
 // Écran principal de l'application Pomodoro Desktop : gestion du minuteur, des réglages et des apps bloquées
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as provider; 
 import '../services/timer_service.dart';
 import '../widgets/circular_timer_display.dart';
 import '../models/pomodoro_settings.dart';
@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'statistics_screen.dart';
 import 'dart:math';
 import 'package:go_router/go_router.dart';
+import '../services/theme_service.dart';
 
 /// Écran principal affichant le minuteur Pomodoro, les boutons de session, les réglages et la déconnexion
 class HomeScreen extends StatefulWidget {
@@ -87,6 +88,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final timer = context.watch<TimerService>();
     final progress = timer.currentDuration.inSeconds / timer.totalDuration.inSeconds;
 
+    // Couleurs dynamiques selon le thème
+    final Color textColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+    final Color iconColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white70
+        : Colors.black87;
+
     // Déclenche les confettis à la fin du timer
     if (timer.currentDuration.inSeconds == 0 && _confettiController.state != ConfettiControllerState.playing && !_showTiplouf) {
       _confettiController.play();
@@ -142,13 +151,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           },
           child: Scaffold(
-            backgroundColor: const Color(0xFFF4F4F4),
+            appBar: AppBar(
+              title: const Text('Pomodoro Desktop'),
+              actions: [
+                PopupMenuButton<AppThemeMode>(
+                  onSelected: (value) {
+                    provider.Provider.of<ThemeService>(context, listen: false).setTheme(value);
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: AppThemeMode.system,
+                      child: Text('🖥 Thème système'),
+                    ),
+                    const PopupMenuItem(
+                      value: AppThemeMode.light,
+                      child: Text('🌞 Thème clair'),
+                    ),
+                    const PopupMenuItem(
+                      value: AppThemeMode.dark,
+                      child: Text('🌜 Thème sombre'),
+                    ),
+                  ],
+                  icon: const Icon(Icons.color_lens),
+                ),
+              ],
+            ),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor, // 👈 fond dynamique selon le thème
             body: Row(
               children: [
                 // Sidebar toujours visible
                 Container(
                   width: 100,
-                  color: const Color(0xFFE0E0E0),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF1E1E1E)
+                      : Colors.grey[200],
                   child: _buildSidebar(timer),
                 ),
                 // Contenu principal centré et largeur fixe
@@ -170,6 +206,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 duration: timer.currentDuration,
                                 progress: progress,
                                 label: '',
+                                textStyle: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                                resetTimer: timer.resetTimer,
+                                isRunning: timer.isRunning,
+                                startTimer: timer.startTimer,
+                                stopTimer: timer.stopTimer,
                               ),
                               Positioned(
                                 bottom: 120,
@@ -463,27 +504,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Ajoute une méthode pour la sidebar pour éviter la duplication
   Widget _buildSidebar(TimerService timer) {
+    final sessionType = timer.sessionType;
+
+    Color iconColorFor(PomodoroSessionType type) =>
+        sessionType == type
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).iconTheme.color!;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Bouton focus
         IconButton(
           onPressed: () => timer.switchSession(PomodoroSessionType.focus),
-          icon: const Icon(Icons.timer, color: Colors.indigo),
+          icon: Icon(Icons.timer, color: iconColorFor(PomodoroSessionType.focus)),
           tooltip: "Focus",
         ),
         const SizedBox(height: 16),
         // Bouton pause courte
         IconButton(
           onPressed: () => timer.switchSession(PomodoroSessionType.shortBreak),
-          icon: const Icon(Icons.coffee, color: Colors.green),
+          icon: Icon(Icons.coffee, color: iconColorFor(PomodoroSessionType.shortBreak)),
           tooltip: "Pause courte",
         ),
         const SizedBox(height: 16),
         // Bouton pause longue
         IconButton(
           onPressed: () => timer.switchSession(PomodoroSessionType.longBreak),
-          icon: const Icon(Icons.bed, color: Colors.redAccent),
+          icon: Icon(Icons.bed, color: iconColorFor(PomodoroSessionType.longBreak)),
           tooltip: "Pause longue",
         ),
         const SizedBox(height: 16),
