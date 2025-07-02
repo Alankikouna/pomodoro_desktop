@@ -18,6 +18,7 @@ class TimerService extends ChangeNotifier {
     focusDuration: 25,
     shortBreakDuration: 5,
     longBreakDuration: 15,
+    longBreakEveryX: 4, // Ajout de la valeur par défaut pour longBreakEveryX
   );
 
   Timer? _timer; // Timer du compte à rebours
@@ -93,7 +94,7 @@ class TimerService extends ChangeNotifier {
         // Ajoute la logique de passage automatique
         if (sessionType == PomodoroSessionType.focus) {
           _sessionCount++;
-          if (_sessionCount % 4 == 0) {
+          if (_sessionCount % settings.longBreakEveryX == 0) {
             startLongBreak();
           } else {
             startShortBreak();
@@ -170,6 +171,7 @@ class TimerService extends ChangeNotifier {
           focusDuration: response['focus_duration'],
           shortBreakDuration: response['short_break_duration'],
           longBreakDuration: response['long_break_duration'],
+          longBreakEveryX: response['long_break_every_x'] ?? 4, // Ajout de l'argument requis
         );
         _setInitialDuration(); // recharge les durées
         notifyListeners();

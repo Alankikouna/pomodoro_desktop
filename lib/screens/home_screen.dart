@@ -317,95 +317,119 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Modifier les durées (minutes)"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Champ focus
-            TextField(
-              controller: focusCtrl,
-              decoration: const InputDecoration(labelText: "Focus"),
-              keyboardType: TextInputType.number,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text("Modifier les durées (minutes)"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Champ focus
+              TextField(
+                controller: focusCtrl,
+                decoration: const InputDecoration(labelText: "Focus"),
+                keyboardType: TextInputType.number,
+              ),
+              // Champ pause courte
+              TextField(
+                controller: shortCtrl,
+                decoration: const InputDecoration(labelText: "Pause courte"),
+                keyboardType: TextInputType.number,
+              ),
+              // Champ pause longue
+              TextField(
+                controller: longCtrl,
+                decoration: const InputDecoration(labelText: "Pause longue"),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              // Ajout du slider pour le nombre de sessions avant une pause longue
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Nombre de sessions avant une pause longue :"),
+                  Slider(
+                    value: settings.longBreakEveryX.toDouble(),
+                    min: 2,
+                    max: 10,
+                    divisions: 8,
+                    label: "${settings.longBreakEveryX}",
+                    onChanged: (value) {
+                      setState(() {
+                        settings.longBreakEveryX = value.toInt();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Annuler"),
             ),
-            // Champ pause courte
-            TextField(
-              controller: shortCtrl,
-              decoration: const InputDecoration(labelText: "Pause courte"),
-              keyboardType: TextInputType.number,
-            ),
-            // Champ pause longue
-            TextField(
-              controller: longCtrl,
-              decoration: const InputDecoration(labelText: "Pause longue"),
-              keyboardType: TextInputType.number,
+            TextButton(
+              onPressed: () async {
+                // Met à jour les réglages et sauvegarde dans Supabase
+                settings.focusDuration = int.tryParse(focusCtrl.text) ?? 25;
+                settings.shortBreakDuration = int.tryParse(shortCtrl.text) ?? 5;
+                settings.longBreakDuration = int.tryParse(longCtrl.text) ?? 15;
+                timer.resetTimer();
+
+                // 🔐 Sauvegarde dans Supabase
+                final userId = Supabase.instance.client.auth.currentUser?.id;
+                if (userId != null) {
+                  await Supabase.instance.client
+                      .from('pomodoro_settings')
+                      .upsert({
+                        'user_id': userId,
+                        'focus_duration': settings.focusDuration,
+                        'short_break_duration': settings.shortBreakDuration,
+                        'long_break_duration': settings.longBreakDuration,
+                        // AJOUTE CETTE LIGNE :
+                        'long_break_every_x': settings.longBreakEveryX,
+                      });
+                }
+
+                Navigator.pop(context);
+
+                // Affiche une fenêtre de confirmation
+                showGeneralDialog(
+                  context: context,
+                  barrierDismissible: true,
+                  barrierLabel: "Confirmation",
+                  transitionDuration: const Duration(milliseconds: 350),
+                  pageBuilder: (context, anim1, anim2) => AlertDialog(
+                    title: const Text("Paramètres enregistrés"),
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.green, size: 32),
+                        const SizedBox(width: 12),
+                        const Expanded(child: Text("Les paramètres Pomodoro ont bien été pris en compte.")),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("OK"),
+                      ),
+                    ],
+                  ),
+                  transitionBuilder: (context, anim1, anim2, child) {
+                    return FadeTransition(
+                      opacity: anim1,
+                      child: ScaleTransition(
+                        scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+                        child: child,
+                      ),
+                    );
+                  },
+                );
+              },
+              child: const Text("Enregistrer"),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Annuler"),
-          ),
-          TextButton(
-            onPressed: () async {
-              // Met à jour les réglages et sauvegarde dans Supabase
-              settings.focusDuration = int.tryParse(focusCtrl.text) ?? 25;
-              settings.shortBreakDuration = int.tryParse(shortCtrl.text) ?? 5;
-              settings.longBreakDuration = int.tryParse(longCtrl.text) ?? 15;
-              timer.resetTimer();
-
-              // 🔐 Sauvegarde dans Supabase
-              final userId = Supabase.instance.client.auth.currentUser?.id;
-              if (userId != null) {
-                await Supabase.instance.client
-                    .from('pomodoro_settings')
-                    .upsert({
-                      'user_id': userId,
-                      'focus_duration': settings.focusDuration,
-                      'short_break_duration': settings.shortBreakDuration,
-                      'long_break_duration': settings.longBreakDuration,
-                    });
-              }
-
-              Navigator.pop(context);
-
-              // Affiche une fenêtre de confirmation
-              showGeneralDialog(
-                context: context,
-                barrierDismissible: true,
-                barrierLabel: "Confirmation",
-                transitionDuration: const Duration(milliseconds: 350),
-                pageBuilder: (context, anim1, anim2) => AlertDialog(
-                  title: const Text("Paramètres enregistrés"),
-                  content: Row(
-                    children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 32),
-                      const SizedBox(width: 12),
-                      const Expanded(child: Text("Les paramètres Pomodoro ont bien été pris en compte.")),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("OK"),
-                    ),
-                  ],
-                ),
-                transitionBuilder: (context, anim1, anim2, child) {
-                  return FadeTransition(
-                    opacity: anim1,
-                    child: ScaleTransition(
-                      scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
-                      child: child,
-                    ),
-                  );
-                },
-              );
-            },
-            child: const Text("Enregistrer"),
-          ),
-        ],
       ),
     );
   }
