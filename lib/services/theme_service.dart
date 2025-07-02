@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'timer_service.dart';
 
 enum AppThemeMode { system, light, dark }
 
@@ -34,5 +36,9 @@ class ThemeService with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_key, mode.index);
     notifyListeners();
+  }
+
+  void pauseTimerService(BuildContext context) {
+    context.read<TimerService>().pause();
   }
 }

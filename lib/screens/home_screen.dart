@@ -5,6 +5,7 @@ import '../services/timer_service.dart';
 import '../widgets/circular_timer_display.dart';
 import '../models/pomodoro_settings.dart';
 import '../services/app_blocker_service.dart';
+import '../services/activity_service.dart'; // <-- Ajoute cet import
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -46,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   String? _currentPokemonGif;
   final Random _random = Random();
+  late InactivityService _inactivityService; // <-- Ajoute ceci
 
   @override
   void initState() {
@@ -71,10 +73,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Contrôleur pour les confettis de fin de session
     _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+
+    // Initialisation du service d'inactivité
+    _inactivityService = InactivityService(
+      timeout: const Duration(seconds: 60),
+      onInactivity: () {
+        final timerService = context.read<TimerService>();
+        timerService.stopTimer(); // ou pause(), selon ta logique
+        _showInactivitySnackBar(); // 👈 SnackBar ajouté ici
+        print('⏸️ Minuteur mis en pause par inactivité');
+      },
+    );
+    // Important : initialiser après le build pour avoir un context valide
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _inactivityService.initialize(context);
+    });
   }
 
   @override
   void dispose() {
+    _inactivityService.dispose(); // <-- Ajoute ceci
     _focusNode.dispose();
     _sidebarController.dispose();
     _labelAnimationController.dispose();
@@ -610,6 +628,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     }
     return _pokemons.first.assetPath; // fallback
+  }
+
+  // 🔧 1. Méthode pour afficher le SnackBar d'inactivité
+  void _showInactivitySnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("⏸️ Le minuteur a été mis en pause pour inactivité."),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 }
 

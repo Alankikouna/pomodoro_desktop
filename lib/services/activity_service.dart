@@ -1,7 +1,7 @@
-
 // Service pour surveiller l'activité de l'utilisateur et détecter l'inactivité (Windows)
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:win32/win32.dart';
 import 'package:ffi/ffi.dart';
 import 'dart:ffi';
@@ -68,5 +68,49 @@ class ActivityService extends ChangeNotifier {
 
     // Notifie les listeners (widgets, etc.)
     notifyListeners();
+  }
+}
+
+class InactivityService {
+  final Duration timeout;
+  final VoidCallback onInactivity;
+
+  Timer? _inactivityTimer;
+
+  InactivityService({
+    required this.timeout,
+    required this.onInactivity,
+  });
+
+  void initialize(BuildContext context) {
+    _resetTimer();
+    WidgetsBinding.instance.addObserver(_LifecycleEventHandler(
+      onUserInteraction: _resetTimer,
+    ));
+  }
+
+  void _resetTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(timeout, onInactivity);
+  }
+
+  void dispose() {
+    _inactivityTimer?.cancel();
+  }
+}
+
+class _LifecycleEventHandler extends WidgetsBindingObserver {
+  final VoidCallback onUserInteraction;
+
+  _LifecycleEventHandler({required this.onUserInteraction});
+
+  @override
+  void didChangeMetrics() {
+    onUserInteraction();
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    onUserInteraction();
   }
 }

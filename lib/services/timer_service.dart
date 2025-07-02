@@ -218,4 +218,10 @@ class TimerService extends ChangeNotifier {
         .order('started_at', ascending: false);
     return List<Map<String, dynamic>>.from(res);
   }
+
+  void pause() {
+    _timer?.cancel();
+    isRunning = false;
+    notifyListeners();
+  }
 }
