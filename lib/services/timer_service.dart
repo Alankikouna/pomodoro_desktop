@@ -28,6 +28,7 @@ class TimerService extends ChangeNotifier {
   PomodoroSessionType sessionType = PomodoroSessionType.focus; // Type de session actuelle
   final AppBlockerService _blocker = AppBlockerService.instance; // Service de blocage d'apps
   DateTime? _sessionStart;
+  int _sessionCount = 0; // Compte les cycles focus
 
   /// Constructeur : initialise la durée selon le type de session
   TimerService() {
@@ -88,6 +89,18 @@ class TimerService extends ChangeNotifier {
         notifyListeners();
       } else {
         stopTimer();
+
+        // Ajoute la logique de passage automatique
+        if (sessionType == PomodoroSessionType.focus) {
+          _sessionCount++;
+          if (_sessionCount % 4 == 0) {
+            startLongBreak();
+          } else {
+            startShortBreak();
+          }
+        } else {
+          startFocus();
+        }
       }
     });
   }
@@ -119,6 +132,24 @@ class TimerService extends ChangeNotifier {
     stopTimer();
     sessionType = type;
     _setInitialDuration();
+  }
+
+  void startFocus() {
+    sessionType = PomodoroSessionType.focus;
+    _setInitialDuration();
+    startTimer();
+  }
+
+  void startShortBreak() {
+    sessionType = PomodoroSessionType.shortBreak;
+    _setInitialDuration();
+    startTimer();
+  }
+
+  void startLongBreak() {
+    sessionType = PomodoroSessionType.longBreak;
+    _setInitialDuration();
+    startTimer();
   }
 
 
