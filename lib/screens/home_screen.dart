@@ -11,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_screen.dart'; 
 import 'package:flutter/services.dart';
 import 'statistics_screen.dart';
+import 'dart:math';
 
 /// Écran principal affichant le minuteur Pomodoro, les boutons de session, les réglages et la déconnexion
 class HomeScreen extends StatefulWidget {
@@ -34,6 +35,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final FocusNode _focusNode = FocusNode();
 
   bool _showTiplouf = false; // <-- Ajoute ceci ici
+
+  final List<_PokemonGif> _pokemons = [
+    _PokemonGif('lib/assets/gif/piplup-discord.gif', 85), // 85% commun
+    _PokemonGif('lib/assets/gif/arceus.gif', 14),         // 14% rare
+    _PokemonGif('lib/assets/gif/arceus-pokémon.gif', 1),  // 1% shiny
+  ];
+
+  String? _currentPokemonGif;
+  final Random _random = Random();
 
   @override
   void initState() {
@@ -81,10 +91,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _confettiController.play();
       _audioPlayer.play(AssetSource('sounds/success.mp3'));
       setState(() {
+        _currentPokemonGif = _pickRandomPokemon();
         _showTiplouf = true;
       });
       Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _showTiplouf = false);
+        if (mounted) {
+          setState(() {
+            _showTiplouf = false;
+            _currentPokemonGif = null; 
+          });
+        }
       });
     }
 
@@ -165,21 +181,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ),
-                              // Confettis de fin de session
+
+                              // Message spécial shiny
+                              if (_showTiplouf && _currentPokemonGif == 'lib/assets/gif/arceus-pokémon.gif')
+                                Positioned(
+                                  top: 40,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.yellow.shade700,
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+                                    ),
+                                    child: const Text(
+                                      "✨ SHINY trouvé ! ✨",
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        shadows: [Shadow(blurRadius: 8, color: Colors.black)],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // Affichage du Pokémon tiré
+                              if (_showTiplouf && _currentPokemonGif != null)
+                                Positioned(
+                                  bottom: 0,
+                                  child: Image.asset(
+                                    _currentPokemonGif!,
+                                    height: 120,
+                                  ),
+                                ),
+
+                              // Confettis
                               ConfettiWidget(
                                 confettiController: _confettiController,
                                 blastDirectionality: BlastDirectionality.explosive,
                                 shouldLoop: false,
                                 colors: const [Colors.green, Colors.blue, Colors.orange, Colors.purple],
                               ),
-                              if (_showTiplouf)
-                                Positioned(
-                                  bottom: 0,
-                                  child: Image.asset(
-                                    'lib/assets/gif/piplup-discord.gif',
-                                    height: 120,
-                                  ),
-                                ),
                             ],
                           ),
 
@@ -489,6 +531,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ],
     );
   }
+
+  String _pickRandomPokemon() {
+    final total = _pokemons.fold<int>(0, (sum, p) => sum + p.chance);
+    final rand = _random.nextInt(total); // tirage entre 0 et total-1
+    int cumulative = 0;
+    for (final poke in _pokemons) {
+      cumulative += poke.chance;
+      if (rand < cumulative) {
+        return poke.assetPath;
+      }
+    }
+    return _pokemons.first.assetPath; // fallback
+  }
 }
 
 class ActivateIntent extends Intent {
@@ -497,4 +552,10 @@ class ActivateIntent extends Intent {
 
 class ResetIntent extends Intent {
   const ResetIntent();
+}
+
+class _PokemonGif {
+  final String assetPath;
+  final int chance; // en pourcentage
+  _PokemonGif(this.assetPath, this.chance);
 }
