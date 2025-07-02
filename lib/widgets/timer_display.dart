@@ -1,15 +1,21 @@
+
+// Widget d'affichage du temps Pomodoro et boîte de dialogue de réglages
 import 'package:flutter/material.dart';
 import 'package:pomodoro_desktop/services/timer_service.dart';
 import 'package:provider/provider.dart';
 
 
+
+/// Affiche le temps restant sous forme de texte (mm:ss)
 class TimerDisplay extends StatelessWidget {
+  /// Durée à afficher
   final Duration duration;
 
   const TimerDisplay({super.key, required this.duration});
 
   @override
   Widget build(BuildContext context) {
+    // Formate les minutes et secondes
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
 
@@ -23,6 +29,8 @@ class TimerDisplay extends StatelessWidget {
   }
 }
 
+
+/// Boîte de dialogue pour modifier les réglages Pomodoro (durées)
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
 
@@ -30,6 +38,8 @@ class SettingsDialog extends StatefulWidget {
   State<SettingsDialog> createState() => _SettingsDialogState();
 }
 
+
+/// État de la boîte de dialogue de réglages Pomodoro
 class _SettingsDialogState extends State<SettingsDialog> {
   late int focus;
   late int shortBreak;
@@ -38,14 +48,17 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   void initState() {
     super.initState();
+    // Récupère les valeurs actuelles depuis le service
     final settings = context.read<TimerService>().settings;
     focus = settings.focusDuration;
     shortBreak = settings.shortBreakDuration;
     longBreak = settings.longBreakDuration;
   }
 
+
   @override
   Widget build(BuildContext context) {
+    // Boîte de dialogue avec champs pour chaque durée
     return AlertDialog(
       title: const Text("Réglages Pomodoro"),
       content: Column(
@@ -63,6 +76,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
         ),
         ElevatedButton(
           onPressed: () async {
+            // Met à jour les réglages dans le service
             final timer = context.read<TimerService>();
             timer.settings.focusDuration = focus;
             timer.settings.shortBreakDuration = shortBreak;
@@ -77,6 +91,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
   }
 
+
+  /// Champ de saisie pour une durée (travail ou pause)
   Widget _buildInput(String label, int value, Function(String) onChanged) {
     return TextField(
       keyboardType: TextInputType.number,
