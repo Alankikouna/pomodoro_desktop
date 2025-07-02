@@ -36,3 +36,4 @@ flutter:
 
   assets:
     - lib/assets/sounds/success.mp3
+    - lib/assets/gif/piplup-discord.gif

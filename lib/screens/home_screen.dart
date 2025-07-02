@@ -33,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _audioPlayer = AudioPlayer();
   final FocusNode _focusNode = FocusNode();
 
+  bool _showTiplouf = false; // <-- Ajoute ceci ici
+
   @override
   void initState() {
     super.initState();
@@ -75,9 +77,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final progress = timer.currentDuration.inSeconds / timer.totalDuration.inSeconds;
 
     // Déclenche les confettis à la fin du timer
-    if (timer.currentDuration.inSeconds == 0 && _confettiController.state != ConfettiControllerState.playing) {
+    if (timer.currentDuration.inSeconds == 0 && _confettiController.state != ConfettiControllerState.playing && !_showTiplouf) {
       _confettiController.play();
       _audioPlayer.play(AssetSource('sounds/success.mp3'));
+      setState(() {
+        _showTiplouf = true;
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _showTiplouf = false);
+      });
     }
 
     // Force le focus à chaque build
@@ -164,6 +172,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 shouldLoop: false,
                                 colors: const [Colors.green, Colors.blue, Colors.orange, Colors.purple],
                               ),
+                              if (_showTiplouf)
+                                Positioned(
+                                  bottom: 0,
+                                  child: Image.asset(
+                                    'lib/assets/gif/piplup-discord.gif',
+                                    height: 120,
+                                  ),
+                                ),
                             ],
                           ),
 
