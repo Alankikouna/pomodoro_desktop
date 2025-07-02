@@ -1,4 +1,3 @@
-
 // Service de gestion du minuteur Pomodoro, notifications et blocage d'applications
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -28,6 +27,7 @@ class TimerService extends ChangeNotifier {
   bool isRunning = false; // Indique si le minuteur est en cours
   PomodoroSessionType sessionType = PomodoroSessionType.focus; // Type de session actuelle
   final AppBlockerService _blocker = AppBlockerService.instance; // Service de blocage d'apps
+  DateTime? _sessionStart;
 
   /// Constructeur : initialise la durée selon le type de session
   TimerService() {
@@ -61,6 +61,7 @@ class TimerService extends ChangeNotifier {
   void startTimer() {
     if (isRunning) return;
     isRunning = true;
+    _sessionStart = DateTime.now();
     _blocker.startMonitoring(); // Active le blocage d'applications
 
     // Notification immédiate de début de session
@@ -98,6 +99,10 @@ class TimerService extends ChangeNotifier {
     _timer = null;
     isRunning = false;
     _blocker.stopMonitoring();
+    // Log la session si elle vient de se terminer
+    if (_sessionStart != null && _currentDuration.inSeconds == 0) {
+      logSessionToSupabase(_sessionStart!, DateTime.now());
+    }
     notifyListeners();
   }
 
@@ -154,5 +159,30 @@ class TimerService extends ChangeNotifier {
       'short_break_duration': settings.shortBreakDuration,
       'long_break_duration': settings.longBreakDuration,
     });
+  }
+
+  /// Enregistre une session terminée dans Supabase
+  Future<void> logSessionToSupabase(DateTime startedAt, DateTime endedAt) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await Supabase.instance.client.from('pomodoro_sessions').insert({
+      'user_id': userId,
+      'type': sessionType.name,
+      'started_at': startedAt.toIso8601String(),
+      'ended_at': endedAt.toIso8601String(),
+    });
+  }
+
+  /// Récupère l'historique des sessions depuis Supabase
+  Future<List<Map<String, dynamic>>> fetchSessionHistory() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return [];
+    final res = await Supabase.instance.client
+        .from('pomodoro_sessions')
+        .select()
+        .eq('user_id', userId)
+        .order('started_at', ascending: false);
+    return List<Map<String, dynamic>>.from(res);
   }
 }

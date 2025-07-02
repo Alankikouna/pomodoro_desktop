@@ -1,4 +1,3 @@
-
 // Écran principal de l'application Pomodoro Desktop : gestion du minuteur, des réglages et des apps bloquées
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -136,6 +135,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     icon: const Icon(Icons.block, color: Colors.black87),
                     tooltip: "Apps bloquées",
                   ), 
+                  const SizedBox(height: 16),
+                  // Bouton historique
+                  IconButton(
+                    onPressed: () => _showHistoryDialog(context),
+                    icon: const Icon(Icons.history, color: Colors.deepOrange),
+                    tooltip: "Historique",
+                  ),
                   const SizedBox(height: 16),
                   // Bouton déconnexion
                   IconButton(
@@ -341,6 +347,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Affiche l'historique des sessions Pomodoro
+  void _showHistoryDialog(BuildContext context) async {
+    final timer = context.read<TimerService>();
+    final sessions = await timer.fetchSessionHistory();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Historique des sessions"),
+        content: SizedBox(
+          width: 350,
+          child: sessions.isEmpty
+              ? const Text("Aucune session enregistrée.")
+              : ListView(
+                  shrinkWrap: true,
+                  children: sessions.map((s) => ListTile(
+                    title: Text(s['type']),
+                    subtitle: Text(
+                      "Début : ${s['started_at']}\nFin : ${s['ended_at']}",
+                    ),
+                  )).toList(),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Fermer"),
+          ),
+        ],
       ),
     );
   }
