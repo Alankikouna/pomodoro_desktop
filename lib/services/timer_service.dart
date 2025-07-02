@@ -137,18 +137,21 @@ class TimerService extends ChangeNotifier {
 
   void startFocus() {
     sessionType = PomodoroSessionType.focus;
+    _sessionStart = DateTime.now(); // Ajoute ceci
     _setInitialDuration();
     startTimer();
   }
 
   void startShortBreak() {
     sessionType = PomodoroSessionType.shortBreak;
+    _sessionStart = DateTime.now(); // Ajoute ceci
     _setInitialDuration();
     startTimer();
   }
 
   void startLongBreak() {
     sessionType = PomodoroSessionType.longBreak;
+    _sessionStart = DateTime.now(); // Ajoute ceci
     _setInitialDuration();
     startTimer();
   }

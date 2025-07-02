@@ -1,213 +1,154 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:table_calendar/table_calendar.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'package:csv/csv.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../services/timer_service.dart';
 
-class StatisticsScreen extends StatelessWidget {
+class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Statistiques")),
-      body: const StatisticsContent(),
-    );
-  }
+  State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class StatisticsContent extends StatefulWidget {
-  const StatisticsContent({super.key});
-
-  @override
-  State<StatisticsContent> createState() => _StatisticsContentState();
-}
-
-class _StatisticsContentState extends State<StatisticsContent> {
-  late Future<List<Map<String, dynamic>>> _futureSessions;
+class _StatisticsScreenState extends State<StatisticsScreen> {
+  late Future<List<Map<String, dynamic>>> _sessionsFuture;
 
   @override
   void initState() {
     super.initState();
-    _futureSessions = Provider.of<TimerService>(context, listen: false).fetchSessionHistory();
+    final timerService = Provider.of<TimerService>(context, listen: false);
+    _sessionsFuture = timerService.fetchSessionHistory();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _futureSessions,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final sessions = snapshot.data!;
-        final focusSessions = sessions.where((s) => s['type'] == 'focus');
-        final totalFocusMinutes = focusSessions.fold<int>(0, (sum, s) {
-          final start = DateTime.parse(s['started_at']);
-          final end = DateTime.parse(s['ended_at']);
-          return sum + end.difference(start).inMinutes;
-        });
-        final Map<String, int> focusPerDay = {};
-        for (final s in focusSessions) {
-          final day = DateTime.parse(s['started_at']).toIso8601String().substring(0, 10);
-          final start = DateTime.parse(s['started_at']);
-          final end = DateTime.parse(s['ended_at']);
-          focusPerDay[day] = (focusPerDay[day] ?? 0) + end.difference(start).inMinutes;
-        }
-        final bestDay = (focusPerDay.entries.isEmpty)
-            ? null
-            : focusPerDay.entries.reduce((a, b) => a.value > b.value ? a : b);
-        return ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Text("Nombre total de sessions : ${sessions.length}", style: Theme.of(context).textTheme.titleLarge),
-            Text("Temps total de focus : $totalFocusMinutes min", style: Theme.of(context).textTheme.bodyLarge),
-            if (bestDay != null)
-              Text("Meilleur jour : ${bestDay.key} (${bestDay.value} min)", style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 32),
-            if (focusPerDay.isNotEmpty) ...[
-              Text("Focus par jour", style: Theme.of(context).textTheme.titleMedium),
-              SizedBox(
-                height: 220,
-                child: BarChart(
-                  BarChartData(
-                    alignment: BarChartAlignment.spaceAround,
-                    maxY: (focusPerDay.values.isEmpty ? 60 : focusPerDay.values.reduce((a, b) => a > b ? a : b).toDouble() + 10),
-                    barTouchData: BarTouchData(enabled: true),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Statistiques'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            context.go('/home');
+          },
+        ),
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _sessionsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("Aucune session enregistrée"));
+          }
+
+          final sessions = snapshot.data!;
+          // Regroupe les sessions par date
+          final Map<DateTime, List<Map<String, dynamic>>> events = {};
+          for (var s in sessions) {
+            final date = DateUtils.dateOnly(DateTime.parse(s['ended_at']));
+            events.putIfAbsent(date, () => []).add(s);
+          }
+
+          // Calcul pour le graphique
+          final Map<int, int> dailyCounts = {};
+          for (var entry in events.entries) {
+            final day = entry.key.difference(DateTime(1970)).inDays;
+            dailyCounts[day] = entry.value.length;
+          }
+
+          return _buildCalendarAndChart(events, dailyCounts, sessions);
+        },
+      ),
+    );
+  }
+
+  Widget _buildCalendarAndChart(Map<DateTime, List<Map<String, dynamic>>> events, Map<int, int> dailyCounts, List<Map<String, dynamic>> sessions) {
+    return Column(
+      children: [
+        ElevatedButton.icon(
+          icon: const Icon(Icons.download),
+          label: const Text('Exporter l\'historique (CSV)'),
+          onPressed: () async {
+            final csv = const ListToCsvConverter().convert([
+              ['start', 'end', 'isFocus'],
+              ...sessions.map((s) => [
+                    s['start'].toString(),
+                    s['end'].toString(),
+                    s['isFocus'],
+                  ]),
+            ]);
+            final dir = await FilePicker.platform.getDirectoryPath();
+            if (dir != null) {
+              final file = File('$dir/pomodoro_history.csv');
+              await file.writeAsString(csv);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Export CSV terminé !')),
+                );
+              }
+            }
+          },
+        ),
+        TableCalendar(
+          firstDay: DateTime.now().subtract(const Duration(days: 365)),
+          lastDay: DateTime.now().add(const Duration(days: 365)),
+          focusedDay: DateTime.now(),
+          eventLoader: (day) => events[day] ?? [],
+          calendarBuilders: CalendarBuilders(
+            markerBuilder: (ctx, date, events) => events.isNotEmpty
+                ? Positioned(
+                    right: 1,
+                    bottom: 1,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).colorScheme.primary,
+                        shape: BoxShape.circle,
                       ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (double value, TitleMeta meta) {
-                            final keys = focusPerDay.keys.toList();
-                            if (value.toInt() < 0 || value.toInt() >= keys.length) return const SizedBox();
-                            final label = keys[value.toInt()].substring(5); // MM-DD
-                            return Text(label, style: const TextStyle(fontSize: 10));
-                          },
-                          reservedSize: 32,
+                      child: Center(
+                        child: Text(
+                          '${events.length}',
+                          style: const TextStyle(fontSize: 10, color: Colors.white),
                         ),
                       ),
-                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
-                    borderData: FlBorderData(show: false),
-                    barGroups: List.generate(focusPerDay.length, (i) {
-                      final value = focusPerDay.values.elementAt(i).toDouble();
-                      return BarChartGroupData(
-                        x: i,
-                        barRods: [
-                          BarChartRodData(
-                            toY: value,
-                            color: Colors.indigo,
-                            width: 18,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ],
-                      );
-                    }),
-                  ),
+                  )
+                : null,
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          height: 200,
+          child: LineChart(
+            LineChartData(
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: true),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
                 ),
               ),
-            ],
-            if (focusPerDay.isNotEmpty) ...[
-              const SizedBox(height: 32),
-              Text("Progression hebdomadaire", style: Theme.of(context).textTheme.titleMedium),
-              SizedBox(
-                height: 220,
-                child: LineChart(
-                  LineChartData(
-                    minY: 0,
-                    maxY: (focusPerDay.values.isEmpty ? 60 : focusPerDay.values.reduce((a, b) => a > b ? a : b).toDouble() + 10),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: true, reservedSize: 28),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (double value, TitleMeta meta) {
-                            final keys = focusPerDay.keys.toList();
-                            if (value.toInt() < 0 || value.toInt() >= keys.length) return const SizedBox();
-                            final label = keys[value.toInt()].substring(5); // MM-DD
-                            return Text(label, style: const TextStyle(fontSize: 10));
-                          },
-                          reservedSize: 32,
-                        ),
-                      ),
-                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: List.generate(focusPerDay.length, (i) {
-                          final value = focusPerDay.values.elementAt(i).toDouble();
-                          return FlSpot(i.toDouble(), value);
-                        }),
-                        isCurved: true,
-                        color: Colors.indigo,
-                        barWidth: 3,
-                        dotData: FlDotData(show: true),
-                      ),
-                    ],
-                  ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: dailyCounts.entries
+                      .map((e) => FlSpot(e.key.toDouble(), e.value.toDouble()))
+                      .toList(),
+                  dotData: FlDotData(show: false),
                 ),
-              ),
-            ],
-            const SizedBox(height: 32),
-            Text("Badges & Succès", style: Theme.of(context).textTheme.titleMedium),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                if (totalFocusMinutes >= 120)
-                  Chip(
-                    avatar: const Icon(Icons.emoji_events, color: Colors.amber),
-                    label: const Text("2h de focus cumulées"),
-                    backgroundColor: Colors.amber.shade50,
-                  ),
-                if (focusSessions.length >= 10)
-                  Chip(
-                    avatar: const Icon(Icons.star, color: Colors.blue),
-                    label: const Text("10 sessions de focus"),
-                    backgroundColor: Colors.blue.shade50,
-                  ),
-                if (bestDay != null && bestDay.value >= 60)
-                  Chip(
-                    avatar: const Icon(Icons.local_fire_department, color: Colors.red),
-                    label: Text("🔥 ${bestDay.value} min en un jour"),
-                    backgroundColor: Colors.red.shade50,
-                  ),
-                // Ajoute d'autres badges selon tes critères
               ],
             ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.download),
-              label: const Text("Exporter l'historique (CSV)"),
-              onPressed: () async {
-                final csv = StringBuffer('type,started_at,ended_at\n');
-                for (final s in sessions) {
-                  csv.writeln('${s['type']},${s['started_at']},${s['ended_at']}');
-                }
-                // Utilise le répertoire Documents de l'utilisateur
-                final directory = await getApplicationDocumentsDirectory();
-                final file = File('${directory.path}/pomodoro_sessions.csv');
-                await file.writeAsString(csv.toString());
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Exporté dans ${file.path}")),
-                  );
-                }
-              },
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 }
+  

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart' as provider;
-import 'package:supabase_flutter/supabase_flutter.dart'; // <-- ajoute cet import
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'router.dart';
 import 'services/theme_service.dart';
 import 'services/timer_service.dart';
@@ -8,7 +8,7 @@ import 'services/timer_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Ajoute ceci AVANT tout le reste
+  // Initialisation Supabase
   await Supabase.initialize(
     url: 'https://czxibvxxxfcxhsgrteea.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6eGlidnh4eGZjeGhzZ3J0ZWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA3NTY4MTIsImV4cCI6MjA2NjMzMjgxMn0.0tv6cr2s-RgziLhN9V4vHUV3vq_KC5y6ItYPFjepXbE',
