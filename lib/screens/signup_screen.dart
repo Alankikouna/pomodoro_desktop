@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_screen.dart'; // Assurez-vous d'importer AuthScreen
-
+import 'package:go_router/go_router.dart';
 
 /// Écran permettant à l'utilisateur de créer un compte via Supabase
 class SignupScreen extends StatefulWidget {
@@ -11,7 +11,6 @@ class SignupScreen extends StatefulWidget {
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
-
 
 /// État de l'écran d'inscription : gère la logique d'inscription et l'affichage
 class _SignupScreenState extends State<SignupScreen> {
@@ -30,15 +29,10 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (response.user != null) {
-     
-      
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ Inscription réussie. Connectez-vous !")),
         );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AuthScreen()),
-        );
+        context.go('/auth');
       }
     } catch (e) {
       // Affiche l'erreur en cas d'échec
@@ -47,7 +41,6 @@ class _SignupScreenState extends State<SignupScreen> {
       );
     }
   }
-
 
   /// Construit l'interface d'inscription avec champs et bouton
   @override

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart' as provider;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../services/timer_service.dart';
 
 
@@ -47,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
               'long_break_duration': 15,
               'has_seen_onboarding': false, // <-- false ici !
             });
-        Navigator.pushReplacementNamed(context, '/onboarding');
+        context.go('/onboarding');
         return;
       }
 
@@ -55,16 +56,16 @@ class _SplashScreenState extends State<SplashScreen> {
       print('DEBUG: hasSeenOnboarding = $hasSeenOnboarding');
       if (!hasSeenOnboarding) {
         print('DEBUG: Redirection vers onboarding');
-        Navigator.pushReplacementNamed(context, '/onboarding');
+        context.go('/onboarding');
         return;
       }
 
       final timer = provider.Provider.of<TimerService>(context, listen: false);
       await timer.loadSettingsFromSupabase();
-      Navigator.pushReplacementNamed(context, '/home');
+      context.go('/home');
     } else {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/auth');
+      context.go('/auth');
     }
   }
 

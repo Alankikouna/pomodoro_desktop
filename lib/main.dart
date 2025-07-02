@@ -4,11 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/timer_service.dart';
-import 'screens/splash_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/auth_screen.dart';
-import 'screens/signup_screen.dart';
-import 'screens/onboarding_screen.dart';
+import 'router.dart'; // <-- Ajoute cet import
 
 
 /// Initialise Flutter, Supabase et lance l'application
@@ -30,22 +26,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => TimerService(), // Fournit le service Pomodoro à toute l'app
-      child: MaterialApp(
+      child: MaterialApp.router(
         title: 'Pomodoro Desktop',
+        theme: ThemeData.light(),
+        darkTheme: ThemeData.dark(),
+        themeMode: ThemeMode.system,
+        routerConfig: appRouter,
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-          useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFF4F4F4),
-        ),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => const SplashScreen(),
-          '/home': (context) => const HomeScreen(),
-          '/auth': (context) => const AuthScreen(),
-          '/signup': (context) => const SignupScreen(),
-          '/onboarding': (context) => const OnboardingScreen(),
-        },
       ),
     );
   }

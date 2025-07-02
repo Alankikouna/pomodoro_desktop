@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'home_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -42,10 +42,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             .from('pomodoro_settings')
             .upsert({'user_id': userId, 'has_seen_onboarding': true});
       }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      context.go('/home');
     }
   }
 

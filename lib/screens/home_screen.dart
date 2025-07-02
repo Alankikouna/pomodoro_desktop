@@ -12,6 +12,7 @@ import 'auth_screen.dart';
 import 'package:flutter/services.dart';
 import 'statistics_screen.dart';
 import 'dart:math';
+import 'package:go_router/go_router.dart';
 
 /// Écran principal affichant le minuteur Pomodoro, les boutons de session, les réglages et la déconnexion
 class HomeScreen extends StatefulWidget {
@@ -457,11 +458,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await Supabase.instance.client.auth.signOut();
 
     // Redirection vers la page d'authentification
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const AuthScreen()),
-      (route) => false,
-    );
+    context.go('/auth');
   }
 
   /// Ajoute une méthode pour la sidebar pour éviter la duplication
@@ -514,9 +511,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // Bouton statistiques
         IconButton(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const StatisticsScreen()),
-            );
+            context.go('/stats');
           },
           icon: const Icon(Icons.bar_chart, color: Colors.blue),
           tooltip: "Statistiques",

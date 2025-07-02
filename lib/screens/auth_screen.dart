@@ -1,7 +1,7 @@
 // Écran d'authentification (connexion/inscription) avec Supabase
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'signup_screen.dart';
+import 'package:go_router/go_router.dart'; // tout en haut du fichier
 
 
 /// Écran permettant à l'utilisateur de se connecter ou de s'inscrire
@@ -51,7 +51,7 @@ class _AuthScreenState extends State<AuthScreen> {
       }
 
       // Redirige vers la page d'accueil
-      Navigator.pushReplacementNamed(context, '/');
+      context.go('/'); // ou '/auth', '/signup', etc. selon la destination
     } on AuthException catch (e) {
       // Affiche le message d'erreur d'authentification
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,10 +112,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     // Lien vers la page d'inscription
                     TextButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const SignupScreen()),
-                        );
+                        context.go('/signup');
                       },
                       child: const Text("Pas encore inscrit ? Créer un compte"),
                     ),
