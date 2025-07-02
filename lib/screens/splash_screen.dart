@@ -28,8 +28,6 @@ class _SplashScreenState extends State<SplashScreen> {
     if (session != null) {
       final timer = provider.Provider.of<TimerService>(context, listen: false);
       await timer.loadSettingsFromSupabase();
-
-      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),

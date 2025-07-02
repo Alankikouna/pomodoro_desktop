@@ -8,24 +8,26 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 enum PomodoroSessionType { focus, shortBreak, longBreak }
 
 class TimerService extends ChangeNotifier {
-  PomodoroSettings settings;
-  Timer? _timer; // ✅ sécurisation : plus de late
-  Duration _currentDuration = Duration(minutes: 25);
+  PomodoroSettings settings = PomodoroSettings(
+    focusDuration: 25,
+    shortBreakDuration: 5,
+    longBreakDuration: 15,
+  );
+
+  Timer? _timer;
+  Duration _currentDuration = const Duration(minutes: 25);
+  final Duration _totalDuration = const Duration(minutes: 25);
 
   bool isRunning = false;
   PomodoroSessionType sessionType = PomodoroSessionType.focus;
+  final AppBlockerService _blocker = AppBlockerService.instance;
 
-  TimerService(this.settings) {
+  TimerService() {
     _setInitialDuration();
   }
 
   Duration get currentDuration => _currentDuration;
-
-  // Add this getter or field for totalDuration
   Duration get totalDuration => _totalDuration;
-
-  // Make sure you have a backing field for totalDuration
-  final Duration _totalDuration = const Duration(minutes: 25);
 
   void _setInitialDuration() {
     switch (sessionType) {
@@ -45,7 +47,7 @@ class TimerService extends ChangeNotifier {
   void startTimer() {
     if (isRunning) return;
     isRunning = true;
-    _blocker.startMonitoring(); 
+    _blocker.startMonitoring();
 
     NotificationService().showImmediateNotification(
       title: "Session démarrée",
@@ -73,12 +75,11 @@ class TimerService extends ChangeNotifier {
   }
 
   void stopTimer() {
-    _timer?.cancel(); // ✅ annulation sécurisée
+    _timer?.cancel();
     _timer = null;
     isRunning = false;
-     _blocker.stopMonitoring();
+    _blocker.stopMonitoring();
     notifyListeners();
-
   }
 
   void resetTimer() {
@@ -87,41 +88,45 @@ class TimerService extends ChangeNotifier {
   }
 
   void switchSession(PomodoroSessionType type) {
-    stopTimer(); // ✅ arrête le timer actif
+    stopTimer();
     sessionType = type;
-    _setInitialDuration(); // ✅ applique la bonne durée
-    notifyListeners(); // ✅ mise à jour de l’UI
+    _setInitialDuration();
   }
-  final AppBlockerService _blocker = AppBlockerService.instance;
 
   Future<void> loadSettingsFromSupabase() async {
-  final userId = Supabase.instance.client.auth.currentUser?.id;
-  if (userId == null) return;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
 
-  final response = await Supabase.instance.client
-      .from('pomodoro_settings')
-      .select()
-      .eq('user_id', userId)
-      .maybeSingle();
+    try {
+      final response = await Supabase.instance.client
+          .from('pomodoro_settings')
+          .select()
+          .eq('user_id', userId)
+          .single();
 
-  if (response != null) {
-    settings.focusDuration = response['focus_duration'] ?? settings.focusDuration;
-    settings.shortBreakDuration = response['short_break_duration'] ?? settings.shortBreakDuration;
-    settings.longBreakDuration = response['long_break_duration'] ?? settings.longBreakDuration;
-    _setInitialDuration();
-    notifyListeners();
+      if (response != null) {
+        settings = PomodoroSettings(
+          focusDuration: response['focus_duration'],
+          shortBreakDuration: response['short_break_duration'],
+          longBreakDuration: response['long_break_duration'],
+        );
+        _setInitialDuration(); // recharge les durées
+        notifyListeners();
+      }
+    } catch (e) {
+      // Log optionnel
+    }
   }
-}
 
-Future<void> saveSettingsToSupabase() async {
-  final userId = Supabase.instance.client.auth.currentUser?.id;
-  if (userId == null) return;
+  Future<void> saveSettingsToSupabase() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
 
-  await Supabase.instance.client.from('pomodoro_settings').upsert({
-    'user_id': userId,
-    'focus_duration': settings.focusDuration,
-    'short_break_duration': settings.shortBreakDuration,
-    'long_break_duration': settings.longBreakDuration,
-  });
-}
+    await Supabase.instance.client.from('pomodoro_settings').upsert({
+      'user_id': userId,
+      'focus_duration': settings.focusDuration,
+      'short_break_duration': settings.shortBreakDuration,
+      'long_break_duration': settings.longBreakDuration,
+    });
+  }
 }
