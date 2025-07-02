@@ -8,7 +8,9 @@ import '../services/app_blocker_service.dart';
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'auth_screen.dart'; // assure-toi que ce fichier existe
+import 'auth_screen.dart'; 
+import 'package:flutter/services.dart';
+
 
 
 /// Écran principal affichant le minuteur Pomodoro, les boutons de session, les réglages et la déconnexion
@@ -72,160 +74,182 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Récupère le service du timer et calcule la progression
     final timer = context.watch<TimerService>();
     final progress = timer.currentDuration.inSeconds / timer.totalDuration.inSeconds;
 
-    // Si la session est terminée, lance les confettis et le son
-    if (timer.currentDuration.inSeconds == 0) {
-      _confettiController.play();
-      _audioPlayer.play(AssetSource('sounds/success.mp3'));
-    }
+    return Shortcuts(
+      shortcuts: <LogicalKeySet, Intent>{
+        LogicalKeySet(LogicalKeyboardKey.space): const ActivateIntent(),
+        LogicalKeySet(LogicalKeyboardKey.keyR): const ResetIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (intent) {
+              if (timer.isRunning) {
+                timer.stopTimer();
+              } else {
+                timer.startTimer();
+              }
+              return null;
+            },
+          ),
+          ResetIntent: CallbackAction<ResetIntent>(
+            onInvoke: (intent) {
+              timer.resetTimer();
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Scaffold(
+            backgroundColor: const Color(0xFFF4F4F4),
+            body: Row(
+              children: [
+                // Barre latérale avec boutons de session, réglages, apps bloquées et déconnexion
+                SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(-1, 0),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: _sidebarController,
+                    curve: Curves.easeOut,
+                  )),
+                  child: Container(
+                    width: 100,
+                    color: const Color(0xFFE0E0E0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Bouton focus
+                        IconButton(
+                          onPressed: () => timer.switchSession(PomodoroSessionType.focus),
+                          icon: const Icon(Icons.timer, color: Colors.indigo),
+                          tooltip: "Focus",
+                        ),
+                        const SizedBox(height: 16),
+                        // Bouton pause courte
+                        IconButton(
+                          onPressed: () => timer.switchSession(PomodoroSessionType.shortBreak),
+                          icon: const Icon(Icons.coffee, color: Colors.green),
+                          tooltip: "Pause courte",
+                        ),
+                        const SizedBox(height: 16),
+                        // Bouton pause longue
+                        IconButton(
+                          onPressed: () => timer.switchSession(PomodoroSessionType.longBreak),
+                          icon: const Icon(Icons.bed, color: Colors.redAccent),
+                          tooltip: "Pause longue",
+                        ),
+                        const SizedBox(height: 16),
+                        // Bouton réglages
+                        IconButton(
+                          onPressed: () => _showSettingsDialog(context, timer.settings, timer),
+                          icon: const Icon(Icons.tune, color: Colors.grey),
+                          tooltip: "Modifier durées",
+                        ),
+                        const SizedBox(height: 16),
+                        // Bouton apps bloquées
+                        IconButton(
+                          onPressed: () => _showBlockedAppsDialog(context),
+                          icon: const Icon(Icons.block, color: Colors.black87),
+                          tooltip: "Apps bloquées",
+                        ), 
+                        const SizedBox(height: 16),
+                        // Bouton historique
+                        IconButton(
+                          onPressed: () => _showHistoryDialog(context),
+                          icon: const Icon(Icons.history, color: Colors.deepOrange),
+                          tooltip: "Historique",
+                        ),
+                        const SizedBox(height: 16),
+                        // Bouton déconnexion
+                        IconButton(
+                          icon: const Icon(Icons.logout),
+                          onPressed: () => _logout(context),
+                          tooltip: 'Déconnexion',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F4),
-      body: Row(
-        children: [
-          // Barre latérale avec boutons de session, réglages, apps bloquées et déconnexion
-          SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(-1, 0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: _sidebarController,
-              curve: Curves.easeOut,
-            )),
-            child: Container(
-              width: 100,
-              color: const Color(0xFFE0E0E0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Bouton focus
-                  IconButton(
-                    onPressed: () => timer.switchSession(PomodoroSessionType.focus),
-                    icon: const Icon(Icons.timer, color: Colors.indigo),
-                    tooltip: "Focus",
+                // Zone principale : minuteur, label, confettis, boutons de contrôle
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                    child: Column(
+                      children: [
+                        const Spacer(),
+
+                        // Minuteur circulaire et label animé
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CircularTimerDisplay(
+                              duration: timer.currentDuration,
+                              progress: progress,
+                              label: '',
+                            ),
+                            Positioned(
+                              bottom: 120,
+                              child: SlideTransition(
+                                position: _labelOffsetAnimation,
+                                child: Text(
+                                  timer.sessionType.name.toUpperCase(),
+                                  key: ValueKey(timer.sessionType),
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            // Confettis de fin de session
+                            ConfettiWidget(
+                              confettiController: _confettiController,
+                              blastDirectionality: BlastDirectionality.explosive,
+                              shouldLoop: false,
+                              colors: const [Colors.green, Colors.blue, Colors.orange, Colors.purple],
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Boutons de contrôle (reset, play/pause)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedScale(
+                              scale: timer.isRunning ? 1.0 : 1.1,
+                              duration: const Duration(milliseconds: 300),
+                              child: IconButton(
+                                icon: const Icon(Icons.restart_alt),
+                                iconSize: 36,
+                                onPressed: timer.resetTimer,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            AnimatedScale(
+                              scale: timer.isRunning ? 1.0 : 1.1,
+                              duration: const Duration(milliseconds: 300),
+                              child: IconButton(
+                                icon: Icon(timer.isRunning ? Icons.pause : Icons.play_arrow),
+                                iconSize: 36,
+                                onPressed: timer.isRunning ? timer.stopTimer : timer.startTimer,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const Spacer(),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  // Bouton pause courte
-                  IconButton(
-                    onPressed: () => timer.switchSession(PomodoroSessionType.shortBreak),
-                    icon: const Icon(Icons.coffee, color: Colors.green),
-                    tooltip: "Pause courte",
-                  ),
-                  const SizedBox(height: 16),
-                  // Bouton pause longue
-                  IconButton(
-                    onPressed: () => timer.switchSession(PomodoroSessionType.longBreak),
-                    icon: const Icon(Icons.bed, color: Colors.redAccent),
-                    tooltip: "Pause longue",
-                  ),
-                  const SizedBox(height: 16),
-                  // Bouton réglages
-                  IconButton(
-                    onPressed: () => _showSettingsDialog(context, timer.settings, timer),
-                    icon: const Icon(Icons.tune, color: Colors.grey),
-                    tooltip: "Modifier durées",
-                  ),
-                  const SizedBox(height: 16),
-                  // Bouton apps bloquées
-                  IconButton(
-                    onPressed: () => _showBlockedAppsDialog(context),
-                    icon: const Icon(Icons.block, color: Colors.black87),
-                    tooltip: "Apps bloquées",
-                  ), 
-                  const SizedBox(height: 16),
-                  // Bouton historique
-                  IconButton(
-                    onPressed: () => _showHistoryDialog(context),
-                    icon: const Icon(Icons.history, color: Colors.deepOrange),
-                    tooltip: "Historique",
-                  ),
-                  const SizedBox(height: 16),
-                  // Bouton déconnexion
-                  IconButton(
-                    icon: const Icon(Icons.logout),
-                    onPressed: () => _logout(context),
-                    tooltip: 'Déconnexion',
-                  ),
-                ],
-              ),
+                )
+              ],
             ),
           ),
-
-          // Zone principale : minuteur, label, confettis, boutons de contrôle
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: Column(
-                children: [
-                  const Spacer(),
-
-                  // Minuteur circulaire et label animé
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircularTimerDisplay(
-                        duration: timer.currentDuration,
-                        progress: progress,
-                        label: '',
-                      ),
-                      Positioned(
-                        bottom: 120,
-                        child: SlideTransition(
-                          position: _labelOffsetAnimation,
-                          child: Text(
-                            timer.sessionType.name.toUpperCase(),
-                            key: ValueKey(timer.sessionType),
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      // Confettis de fin de session
-                      ConfettiWidget(
-                        confettiController: _confettiController,
-                        blastDirectionality: BlastDirectionality.explosive,
-                        shouldLoop: false,
-                        colors: const [Colors.green, Colors.blue, Colors.orange, Colors.purple],
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Boutons de contrôle (reset, play/pause)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      AnimatedScale(
-                        scale: timer.isRunning ? 1.0 : 1.1,
-                        duration: const Duration(milliseconds: 300),
-                        child: IconButton(
-                          icon: const Icon(Icons.restart_alt),
-                          iconSize: 36,
-                          onPressed: timer.resetTimer,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      AnimatedScale(
-                        scale: timer.isRunning ? 1.0 : 1.1,
-                        duration: const Duration(milliseconds: 300),
-                        child: IconButton(
-                          icon: Icon(timer.isRunning ? Icons.pause : Icons.play_arrow),
-                          iconSize: 36,
-                          onPressed: timer.isRunning ? timer.stopTimer : timer.startTimer,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(),
-                ],
-              ),
-            ),
-          )
-        ],
+        ),
       ),
     );
   }
@@ -395,4 +419,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       (route) => false,
     );
   }
+}
+
+class ActivateIntent extends Intent {
+  const ActivateIntent();
+}
+
+class ResetIntent extends Intent {
+  const ResetIntent();
 }
