@@ -1,4 +1,3 @@
-
 // Point d'entrée principal de l'application Pomodoro Desktop
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/timer_service.dart';
 import 'screens/splash_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/auth_screen.dart';
+import 'screens/signup_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 
 /// Initialise Flutter, Supabase et lance l'application
@@ -35,7 +38,14 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
           scaffoldBackgroundColor: const Color(0xFFF4F4F4),
         ),
-        home: const SplashScreen(), // Redirection automatique selon l'état de connexion
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const SplashScreen(),
+          '/home': (context) => const HomeScreen(),
+          '/auth': (context) => const AuthScreen(),
+          '/signup': (context) => const SignupScreen(),
+          '/onboarding': (context) => const OnboardingScreen(),
+        },
       ),
     );
   }

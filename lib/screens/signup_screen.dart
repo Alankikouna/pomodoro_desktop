@@ -1,7 +1,7 @@
-
 // Écran d'inscription utilisateur avec Supabase
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'auth_screen.dart'; // Assurez-vous d'importer AuthScreen
 
 
 /// Écran permettant à l'utilisateur de créer un compte via Supabase
@@ -30,11 +30,15 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (response.user != null) {
-        // Succès : affiche un message et retourne à la page de connexion
+     
+      
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ Inscription réussie. Connectez-vous !")),
         );
-        Navigator.pop(context); // Retour à la page de connexion
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AuthScreen()),
+        );
       }
     } catch (e) {
       // Affiche l'erreur en cas d'échec

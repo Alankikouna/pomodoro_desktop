@@ -315,6 +315,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               }
 
               Navigator.pop(context);
+
+              // Affiche une fenêtre de confirmation
+              showGeneralDialog(
+                context: context,
+                barrierDismissible: true,
+                barrierLabel: "Confirmation",
+                transitionDuration: const Duration(milliseconds: 350),
+                pageBuilder: (context, anim1, anim2) => AlertDialog(
+                  title: const Text("Paramètres enregistrés"),
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 32),
+                      const SizedBox(width: 12),
+                      const Expanded(child: Text("Les paramètres Pomodoro ont bien été pris en compte.")),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("OK"),
+                    ),
+                  ],
+                ),
+                transitionBuilder: (context, anim1, anim2, child) {
+                  return FadeTransition(
+                    opacity: anim1,
+                    child: ScaleTransition(
+                      scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+                      child: child,
+                    ),
+                  );
+                },
+              );
             },
             child: const Text("Enregistrer"),
           ),

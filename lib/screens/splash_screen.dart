@@ -1,11 +1,8 @@
-
 // Écran de démarrage (SplashScreen) qui vérifie l'authentification et charge les paramètres utilisateur
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart' as provider;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/timer_service.dart';
-import 'auth_screen.dart';
-import 'home_screen.dart';
 
 
 /// Affiche un écran de chargement au lancement de l'app et redirige selon l'état de connexion
@@ -27,26 +24,47 @@ class _SplashScreenState extends State<SplashScreen> {
 
   /// Vérifie si l'utilisateur est connecté et redirige vers la bonne page
   Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(seconds: 1)); // Petite pause pour l'effet splash
+    await Future.delayed(const Duration(seconds: 1));
     final session = Supabase.instance.client.auth.currentSession;
-
-    if (!mounted) return; // ✅ éviter les erreurs de contexte async
+    if (!mounted) return;
 
     if (session != null) {
-      // Si l'utilisateur est connecté, on charge ses paramètres Pomodoro
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      final response = await Supabase.instance.client
+          .from('pomodoro_settings')
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (response == null) {
+        // Première connexion : crée la ligne et affiche l’onboarding
+        await Supabase.instance.client
+            .from('pomodoro_settings')
+            .upsert({
+              'user_id': userId,
+              'focus_duration': 25,
+              'short_break_duration': 5,
+              'long_break_duration': 15,
+              'has_seen_onboarding': false, // <-- false ici !
+            });
+        Navigator.pushReplacementNamed(context, '/onboarding');
+        return;
+      }
+
+      final hasSeenOnboarding = response['has_seen_onboarding'] ?? false;
+      print('DEBUG: hasSeenOnboarding = $hasSeenOnboarding');
+      if (!hasSeenOnboarding) {
+        print('DEBUG: Redirection vers onboarding');
+        Navigator.pushReplacementNamed(context, '/onboarding');
+        return;
+      }
+
       final timer = provider.Provider.of<TimerService>(context, listen: false);
       await timer.loadSettingsFromSupabase();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      Navigator.pushReplacementNamed(context, '/home');
     } else {
-      // Sinon, on redirige vers l'écran d'authentification
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AuthScreen()),
-      );
+      Navigator.pushReplacementNamed(context, '/auth');
     }
   }
 
