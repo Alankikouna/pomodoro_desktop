@@ -68,19 +68,42 @@ class CircularTimerDisplay extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                "$minutes:$seconds",
-                style: textStyle.copyWith(
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+              // Animation sur le texte du compteur
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: Text(
+                  "$minutes:$seconds",
+                  key: ValueKey<String>("$minutes:$seconds"),
+                  style: textStyle.copyWith(
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                label.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 16,
-                  letterSpacing: 2,
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+              // Animation sur le label (FOCUS, PAUSE, etc.)
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.0, 0.3),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  );
+                },
+                child: Text(
+                  label.toUpperCase(),
+                  key: ValueKey<String>(label),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    letterSpacing: 2,
+                  ).copyWith(
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
                 ),
               ),
             ],
