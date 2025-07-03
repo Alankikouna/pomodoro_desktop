@@ -1,7 +1,6 @@
 // Écran d'inscription utilisateur avec Supabase
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'auth_screen.dart'; // Assurez-vous d'importer AuthScreen
 import 'package:go_router/go_router.dart';
 
 /// Écran permettant à l'utilisateur de créer un compte via Supabase
