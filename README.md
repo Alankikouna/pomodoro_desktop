@@ -1,125 +1,106 @@
 # ⏱️ Pomodoro Desktop App (Flutter)
 
-Une application de gestion du temps basée sur la méthode **Pomodoro**, développée en **Flutter Desktop** pour Windows. Ce projet inclut des animations, des sons, la personnalisation des durées, ainsi qu'une fonctionnalité de blocage d'applications distrayantes.
+Application de gestion du temps basée sur la méthode **Pomodoro**, développée en **Flutter Desktop** pour Windows.  
+Elle combine minuteur, blocage d’applications, notifications, détection d’inactivité et statistiques synchronisées dans Supabase.
 
 ---
 
-## 📖 Objectif
-
-Permettre à un utilisateur de se concentrer par sessions de travail alternées avec des pauses, tout en bloquant automatiquement les applications qui pourraient l'interrompre.
-
----
-
-## 🚀 Etapes du développement (pas à pas)
-
-### ✅ 1. Mise en place du projet Flutter Desktop
-
-* Création du projet : `flutter create pomodoro_desktop`
-* Activation du support Windows : `flutter config --enable-windows-desktop`
-* Nettoyage du code de base et mise en place de la structure MVC.
-
-### ⚡ 2. Logique Pomodoro de base
-
-* Création du fichier `timer_service.dart` pour la gestion du timer
-* Enum `PomodoroSessionType` pour distinguer les types de session (focus, short break, long break)
-* Fonction de démarrage, arrêt, réinitialisation et changement de session
-
-### 📅 3. Interface utilisateur minimaliste
-
-* Écran principal dans `home_screen.dart`
-* Affichage circulaire du temps (widget `CircularTimerDisplay`)
-* Barre latérale (sidebar) avec boutons de navigation vers les différents types de session
-* Ajout d'un système de dialogue modale pour modifier les durées
-
-### 📊 4. Animations
-
-* **SlideTransition** pour la sidebar à l'ouverture
-* **SlideTransition verticale** pour le label de session (Focus, Pause...)
-* **AnimatedScale** pour un effet "pulse" sur les boutons Start / Reset
-* **Confettis** à la fin d'une session avec `confetti` package
-
-### 🔔 5. Notifications et sons
-
-* Utilisation de `flutter_local_notifications` pour afficher des notifications Windows
-* Notification à la fin de chaque session avec un message personnalisé
-* Intégration de `audioplayers` pour jouer un **son à la fin de session**
-
-### ⛔️ 6. Blocage d'applications
-
-* Fichier `app_blocker_service.dart` avec un singleton
-* Liste dynamique des applications à bloquer (ex: Discord.exe)
-* Surveillance toutes les 10 secondes avec `process_run` ou `Process.run()`
-* Fermeture automatique avec `taskkill`
-* Interface modale pour afficher, ajouter et supprimer les apps bloquées
+## Sommaire
+1. [Fonctionnalités](#fonctionnalités)
+2. [Structure du projet](#structure-du-projet)
+3. [Installation et exécution](#installation-et-exécution)
+4. [Supabase et données](#supabase-et-données)
+5. [Contribuer](#contribuer)
+6. [Auteur](#auteur)
 
 ---
 
-## 📂 Structure des fichiers
+## Fonctionnalités
 
+- **Minuteur complet** (Focus, pause courte, pause longue) avec enchaînement automatique.
+- **Personnalisation des durées** via une fenêtre de réglages (stockées dans Supabase).
+- **Notifications toast** et **son** à la fin d’une session (`flutter_local_notifications`, `audioplayers`).
+- **Blocage d’applications** distrayantes (liste d’exécutables surveillés et fermés toutes les 10 s).
+- **Détection d’inactivité** : rappel après 5 minutes sans interaction.
+- **Statistiques détaillées** (historique, graphiques avec `fl_chart`, export CSV).
+- **Onboarding et authentification** (Supabase).
+- **Thème clair/sombre/système** mémorisé dans `shared_preferences`.
+- **Raccourcis clavier** : Espace pour démarrer/stopper, `R` pour réinitialiser.
+- **Animations confettis** et **Pokémon aléatoire** à la fin d’une session réussie.
+- **Script NSIS** pour générer un installeur Windows.
+
+---
+
+## Structure du projet
 ```
 lib/
-├── main.dart
-├── screens/
-│   └── home_screen.dart         # Écran principal avec animations et boutons
-├── services/
-│   ├── timer_service.dart       # Logique Pomodoro (timer)
-│   ├── notification_service.dart# Notifications Windows
-│   └── app_blocker_service.dart # Fermeture des apps interdites
+├── main.dart # Démarrage de l’app et initialisation Supabase
+├── router.dart # Navigation avec GoRouter
+├── screens/ # Interfaces (auth, onboarding, home, stats…)
+│ ├── splash_screen.dart
+│ ├── onboarding_screen.dart
+│ ├── auth_screen.dart
+│ ├── signup_screen.dart
+│ ├── home_screen.dart
+│ ├── statistics_screen.dart
+│ └── app_blocker_settings_dialog.dart
+├── services/ # Logique métier
+│ ├── timer_service.dart
+│ ├── notification_service.dart
+│ ├── app_blocker_service.dart
+│ ├── activity_service.dart
+│ └── theme_service.dart
 ├── models/
-│   └── pomodoro_settings.dart   # Modèle pour les durées
+│ └── pomodoro_settings.dart # Paramètres utilisateur
 ├── widgets/
-│   └── circular_timer_display.dart # Widget circulaire du minuteur
-assets/
-└── sounds/
-    └── success.mp3              # Son à la fin de session
+│ ├── circular_timer_display.dart
+│ └── timer_display.dart
+└── assets/
+├── sounds/success.mp3
+└── gif/ (animations Pokémon)
+
+test/ # Exemple de test Flutter
+pomodoro_installer.nsi # Script d’installation Windows (NSIS)
+analysis_options.yaml # Règles de lint
 ```
 
----
-
-## 😎 Expérience utilisateur
-
-* L'utilisateur voit un cercle animé avec le temps restant
-* Il peut modifier les durées via une popup
-* Il reçoit une **notification** et un **son** à la fin de chaque session
-* Les apps interdites sont automatiquement fermées
-* Le label de session change de manière fluide (glissement + animation)
 
 ---
 
-## 🛏þ⃣ Lancer le projet (Windows Desktop)
+## Installation et exécution
 
-```bash
-flutter pub get
-flutter run -d windows
-```
+1. **Prérequis** : Flutter SDK (canal stable) avec support Windows activé.
+2. Clonez le dépôt puis installez les dépendances :
+   ```bash
+   flutter pub get
+   ```
+3. Lancement en mode développement (Windows) :
+    ```bash
+    flutter run -d windows
+    ```
+4. Génération de l’exécutable :
+    ```bash
+    flutter build windows
+    ```
+5. Création de l’installeur (nécessite NSIS) :
+    ```bash
+    makensis pomodoro_installer.nsi
+    ```
+## Supabase et données
+L’application utilise Supabase pour l’authentification et la sauvegarde des réglages et sessions.
+Les identifiants sont actuellement déclarés dans lib/main.dart; pour un déploiement réel, il est recommandé de les stocker dans des variables d’environnement ou un fichier non suivi par Git.
 
----
+Les statistiques sont récupérées via TimerService.fetchSessionHistory() et affichées dans StatisticsScreen.
+Un bouton permet d’exporter l’historique des sessions au format CSV.
 
-## 📄 pubspec.yaml – dépendances clés
+## Contribuer
+1. Forkez ce dépôt et créez votre branche de travail.
 
-```yaml
-dependencies:
-  provider: ^6.1.1
-  flutter_local_notifications: ^17.1.2
-  audioplayers: ^6.5.0
-  confetti: ^0.8.0
-  win_toast: ^0.1.1
-  process_run: ^0.12.3+2
-  shared_preferences: ^2.2.2
-```
+2. Assurez-vous de respecter les règles de lint (flutter analyze).
 
----
+3. Proposez un Pull Request clair décrivant vos modifications.
 
-## 🌟 Améliorations futures possibles
+## Auteur
+Alan Riehl
 
-* Statistiques de temps passé par type de session
-* Mode "plein écran"
-* Export CSV
-* Intégration cloud (Firebase ou autre)
 
----
-
-## 👤 Auteur
-
-**Alan Riehl**
-Etudiant développeur passionné par la productivité, Flutter et les projets utiles !
