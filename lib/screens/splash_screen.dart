@@ -53,9 +53,8 @@ class _SplashScreenState extends State<SplashScreen> {
       }
 
       final hasSeenOnboarding = response['has_seen_onboarding'] ?? false;
-      print('DEBUG: hasSeenOnboarding = $hasSeenOnboarding');
+      // Redirection onboarding si nécessaire
       if (!hasSeenOnboarding) {
-        print('DEBUG: Redirection vers onboarding');
         context.go('/onboarding');
         return;
       }
