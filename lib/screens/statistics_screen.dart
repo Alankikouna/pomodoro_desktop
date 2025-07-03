@@ -5,11 +5,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart' as provider;
-import 'package:table_calendar/table_calendar.dart';
+// import 'package:table_calendar/table_calendar.dart'; // Supprimé car non utilisé
 import 'package:intl/intl.dart'; // pour formater la date la plus productive
 
 import '../services/timer_service.dart';
 
+/// Écran principal affichant les statistiques Pomodoro (graphique, stats globales, export)
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
@@ -29,6 +30,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     _sessionsFuture = timerService.fetchSessionHistory();
   }
 
+  /// Construit l'interface principale des statistiques.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,32 +102,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     : _buildBarChart(filteredDurations),
               ),
               const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('📊 Statistiques globales',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 12),
-                        Text('• Total de sessions : $totalSessions'),
-                        Text('• Total focus : $totalFocusMinutes min'),
-                        Text('• Durée moyenne : ${averageDuration.toStringAsFixed(1)} min'),
-                        if (mostProductive != null)
-                          Text(
-                            '• Jour le plus productif : '
-                            '${DateFormat.yMMMd().format(mostProductive.date)} '
-                            '(${mostProductive.count} sessions)',
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+              _StatisticsCard(
+                totalSessions: totalSessions,
+                totalFocusMinutes: totalFocusMinutes,
+                averageDuration: averageDuration.toDouble(),
+                mostProductive: mostProductive,
               ),
               const SizedBox(height: 12),
               _buildExportButton(sessions),
@@ -139,6 +120,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   /* ─────── DATA PROCESSING ─────── */
 
+  /// Regroupe les durées par type de session et par jour.
   Map<String, Map<DateTime, int>> _computeDurationsByType(List<Map<String, dynamic>> sessions) {
     final Map<String, Map<DateTime, int>> out = {
       'focus': {},
@@ -161,6 +143,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return out;
   }
 
+  /// Filtre les durées pour ne garder que celles dans la période sélectionnée.
   Map<String, Map<DateTime, int>> _filterByPeriod(Map<String, Map<DateTime, int>> durations) {
     final days = int.parse(_selectedPeriod);
     final cutoff = DateTime.now().subtract(Duration(days: days));
@@ -176,21 +159,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return result;
   }
 
+  /// Calcule la durée totale de focus à partir des données filtrées.
   int _calculateTotalFocus(Map<String, Map<DateTime, int>> durations) {
     return durations['focus']?.values.fold<int>(0, (a, b) => (a ?? 0) + (b ?? 0)) ?? 0;
   }
 
-  Map<DateTime, List<Map<String, dynamic>>> _groupSessionsByDate(List<Map<String, dynamic>> sessions) {
-    final Map<DateTime, List<Map<String, dynamic>>> events = {};
-    for (var s in sessions) {
-      final d = DateUtils.dateOnly(DateTime.parse(s['ended_at']));
-      events.putIfAbsent(d, () => []).add(s);
-    }
-    return events;
-  }
-
+  
   /* ─────── UI GRAPH ─────── */
 
+  /// Construit le graphique multi-courbes (focus, pauses) avec FL Chart.
   Widget _buildLineChart(Map<String, Map<DateTime, int>> durations) {
     final allDates = durations.values.expand((m) => m.keys).toSet().toList()..sort();
     final typeColors = {
@@ -240,6 +217,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  /// Construit le graphique à barres pour la durée de focus par jour.
   Widget _buildBarChart(Map<String, Map<DateTime, int>> durations) {
     final dates = durations['focus']?.keys.toList() ?? [];
     dates.sort();
@@ -279,6 +257,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   /* ─────── EXPORT ─────── */
 
+  /// Bouton d'export CSV des sessions Pomodoro.
   Widget _buildExportButton(List<Map<String, dynamic>> sessions) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -315,12 +294,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 }
 
+/// Modèle pour le jour le plus productif.
 class _MostProductiveDay {
   final DateTime date;
   final int count;
   _MostProductiveDay(this.date, this.count);
 }
 
+/// Trouve le jour avec le plus de sessions Pomodoro.
 _MostProductiveDay? _findMostProductiveDay(List<Map<String, dynamic>> sessions) {
   final Map<DateTime, int> counter = {};
   for (var s in sessions) {
@@ -331,3 +312,49 @@ _MostProductiveDay? _findMostProductiveDay(List<Map<String, dynamic>> sessions) 
   final top = counter.entries.reduce((a, b) => a.value >= b.value ? a : b);
   return _MostProductiveDay(top.key, top.value);
 }
+
+/// Carte affichant les statistiques globales.
+class _StatisticsCard extends StatelessWidget {
+  final int totalSessions;
+  final int totalFocusMinutes;
+  final double averageDuration;
+  final _MostProductiveDay? mostProductive;
+
+  const _StatisticsCard({
+    required this.totalSessions,
+    required this.totalFocusMinutes,
+    required this.averageDuration,
+    required this.mostProductive,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('📊 Statistiques globales',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              Text('• Total de sessions : $totalSessions'),
+              Text('• Total focus : $totalFocusMinutes min'),
+              Text('• Durée moyenne : ${averageDuration.toStringAsFixed(1)} min'),
+              if (mostProductive != null)
+                Text(
+                  '• Jour le plus productif : '
+                  '${DateFormat.yMMMd().format(mostProductive!.date)} '
+                  '(${mostProductive!.count} sessions)',
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }}

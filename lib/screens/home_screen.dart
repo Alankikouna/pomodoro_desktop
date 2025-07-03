@@ -5,13 +5,10 @@ import '../services/timer_service.dart';
 import '../widgets/circular_timer_display.dart';
 import '../models/pomodoro_settings.dart';
 import '../services/app_blocker_service.dart';
-import '../services/activity_service.dart'; // <-- Ajoute cet import
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'auth_screen.dart'; 
 import 'package:flutter/services.dart';
-import 'statistics_screen.dart';
 import 'dart:math';
 import 'package:go_router/go_router.dart';
 import '../services/theme_service.dart';
@@ -138,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           actions: <Type, Action<Intent>>{
             ActivateIntent: CallbackAction<ActivateIntent>(
               onInvoke: (intent) {
-                print('Espace pressé');
+                // print supprimé pour production
                 if (timer.isRunning) {
                   timer.stopTimer();
                 } else {
@@ -149,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             ResetIntent: CallbackAction<ResetIntent>(
               onInvoke: (intent) {
-                print('R pressé');
+                // print supprimé pour production
                 timer.resetTimer();
                 return null;
               },
@@ -314,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Affiche la boîte de dialogue pour modifier les durées Pomodoro
+  /// Affiche la boîte de dialogue pour modifier les durées Pomodoro.
   void _showSettingsDialog(BuildContext context, PomodoroSettings settings, TimerService timer) {
     final focusCtrl = TextEditingController(text: settings.focusDuration.toString());
     final shortCtrl = TextEditingController(text: settings.shortBreakDuration.toString());
@@ -439,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Affiche la boîte de dialogue pour gérer la liste des applications bloquées
+  /// Affiche la boîte de dialogue pour gérer la liste des applications bloquées.
   void _showBlockedAppsDialog(BuildContext context) {
     final blocker = AppBlockerService.instance;
     final controller = TextEditingController();
@@ -490,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Affiche l'historique des sessions Pomodoro
+  /// Affiche l'historique des sessions Pomodoro.
   void _showHistoryDialog(BuildContext context) async {
     final timer = context.read<TimerService>();
     final sessions = await timer.fetchSessionHistory();
@@ -523,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Déconnecte l'utilisateur et redirige vers la page d'authentification
+  /// Déconnecte l'utilisateur et redirige vers la page d'authentification.
   void _logout(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
 
@@ -531,7 +528,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     context.go('/auth');
   }
 
-  /// Ajoute une méthode pour la sidebar pour éviter la duplication
+  /// Construit la sidebar de navigation (sessions, réglages, stats, etc.).
   Widget _buildSidebar(TimerService timer) {
     final sessionType = timer.sessionType;
 
@@ -604,6 +601,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// Tire un Pokémon aléatoire selon la rareté définie.
   String _pickRandomPokemon() {
     final total = _pokemons.fold<int>(0, (sum, p) => sum + p.chance);
     final rand = _random.nextInt(total); // tirage entre 0 et total-1
