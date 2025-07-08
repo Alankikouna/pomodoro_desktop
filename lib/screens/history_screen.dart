@@ -9,13 +9,15 @@ import '../services/timer_service.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
-
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
   String _selectedFilter = 'all';
+  DateTime? _fromDate;
+  DateTime? _toDate;
+
   final _filters = {
     'all': 'Tous',
     'focus': 'Travail',
@@ -23,51 +25,37 @@ class _HistoryScreenState extends State<HistoryScreen> {
     'longBreak': 'Pause longue',
   };
 
+  final _fmtLong = DateFormat('dd/MM/yyyy – HH:mm');
+  final _fmtShort = DateFormat('dd/MM');
+
   @override
   Widget build(BuildContext context) {
     final timerService = context.read<TimerService>();
-    final fmt = DateFormat('dd/MM/yyyy – HH:mm');
-    final shortFmt = DateFormat('dd/MM');
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historique des sessions'),
         actions: [
+          // Export CSV
           IconButton(
+            tooltip: 'Exporter CSV',
             icon: const Icon(Icons.download),
-            tooltip: 'Exporter en CSV',
-            onPressed: () async {
-              final data = await timerService.fetchSessionHistory();
-              final rows = [
-                ['Type', 'Début', 'Fin'],
-                ...data.map((s) => [
-                      s['type'],
-                      s['started_at'],
-                      s['ended_at'],
-                    ]),
-              ];
-              final csv = const ListToCsvConverter().convert(rows);
-              final dir = await getApplicationDocumentsDirectory();
-              final file = File('${dir.path}/sessions_export.csv');
-              await file.writeAsString(csv);
-
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Exporté : ${file.path}')),
-                );
-              }
-            },
+            onPressed: () async => _exportCsv(timerService),
           ),
+          // Supprimer
+          IconButton(
+            tooltip: 'Tout effacer',
+            icon: const Icon(Icons.delete_forever),
+            onPressed: () async => _confirmAndDelete(timerService),
+          ),
+          // Filtre type
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: DropdownButton<String>(
               value: _selectedFilter,
-              onChanged: (value) => setState(() => _selectedFilter = value!),
+              onChanged: (v) => setState(() => _selectedFilter = v!),
               items: _filters.entries
-                  .map((entry) => DropdownMenuItem<String>(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      ))
+                  .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
                   .toList(),
             ),
           ),
@@ -75,141 +63,268 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: timerService.fetchSessionHistory(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            if (snapshot.hasError) return Center(child: Text("Erreur : ${snapshot.error}"));
+        builder: (context, snap) {
+          if (!snap.hasData) {
+            if (snap.hasError) return Center(child: Text('Erreur : ${snap.error}'));
             return const Center(child: CircularProgressIndicator());
           }
 
-          final allSessions = snapshot.data!;
-          final filtered = _selectedFilter == 'all'
-              ? allSessions
-              : allSessions.where((s) => s['type'] == _selectedFilter).toList();
+          // ----------  FILTRES  ----------
+          List<Map<String, dynamic>> sessions = snap.data!;
 
-          if (filtered.isEmpty) {
+          // Type
+          if (_selectedFilter != 'all') {
+            sessions = sessions.where((s) => s['type'] == _selectedFilter).toList();
+          }
+          // Date intervalle
+          if (_fromDate != null) {
+            sessions = sessions.where((s) =>
+              DateTime.parse(s['started_at']).isAfter(_fromDate!) ||
+              DateTime.parse(s['started_at']).isAtSameMomentAs(_fromDate!)
+            ).toList();
+          }
+          if (_toDate != null) {
+            sessions = sessions.where((s) =>
+              DateTime.parse(s['started_at']).isBefore(_toDate!.add(const Duration(days:1)))
+            ).toList();
+          }
+
+          if (sessions.isEmpty) {
             return const Center(child: Text('Aucune session trouvée.'));
           }
 
-          // Résumé
-          final total = filtered.length;
-          final totalMinutes = filtered.fold<int>(0, (sum, s) {
-            final start = DateTime.tryParse(s['started_at'] ?? '') ?? DateTime(0);
-            final end = DateTime.tryParse(s['ended_at'] ?? '') ?? DateTime(0);
+          // ----------  RÉSUMÉ  ----------
+          final total = sessions.length;
+          final totalMin = sessions.fold<int>(0, (sum, s) {
+            final start = DateTime.parse(s['started_at']);
+            final end   = DateTime.parse(s['ended_at']);
             return sum + end.difference(start).inMinutes;
           });
 
-          // Données pour fl_chart
-          final Map<String, int> sessionsByDay = {};
-          for (var s in filtered) {
-            final date = DateTime.tryParse(s['started_at'] ?? '');
-            if (date != null) {
-              final key = shortFmt.format(date);
-              sessionsByDay[key] = (sessionsByDay[key] ?? 0) + 1;
-            }
+          // ----------  GRAPH DATA  ----------
+          final Map<String, int> byDay = {};
+          for (var s in sessions) {
+            final key = _fmtShort.format(DateTime.parse(s['started_at']));
+            byDay[key] = (byDay[key] ?? 0) + 1;
           }
-
-          final chartData = sessionsByDay.entries.toList()
+          final chartData = byDay.entries.toList()
             ..sort((a, b) => a.key.compareTo(b.key));
 
-          return Row(
-            children: [
-              // Liste
-              Expanded(
-                flex: 2,
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        "$total sessions – $totalMinutes minutes",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const Divider(),
-                    Expanded(
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final s = filtered[index];
-                          final type = s['type'];
-                          final started = DateTime.tryParse(s['started_at'] ?? '') ?? DateTime(0);
-                          final ended = DateTime.tryParse(s['ended_at'] ?? '') ?? DateTime(0);
-                          return ListTile(
-                            leading: Icon(_iconFor(type)),
-                            title: Text(_labelFor(type)),
-                            subtitle: Text(
-                              "Début : ${fmt.format(started)}\nFin : ${fmt.format(ended)}",
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Graphique
-              Expanded(
-                flex: 1,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      barTouchData: BarTouchData(enabled: false),
-                      titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+          // ----------  UI  ----------
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // ------ LISTE & RÉSUMÉ  ------
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      // Résumé + date-picker
+                      Material(
+                        color: Theme.of(context).colorScheme.surface,
+                        elevation: 2,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "$total sessions – $totalMin min",
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                              ),
+                              // Date from
+                              _DateButton(
+                                label: _fromDate == null ? 'Du...' : _fmtShort.format(_fromDate!),
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _fromDate ?? DateTime.now(),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime.now(),
+                                  );
+                                  if (picked != null) setState(() => _fromDate = picked);
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              // Date to
+                              _DateButton(
+                                label: _toDate == null ? 'Au...' : _fmtShort.format(_toDate!),
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _toDate ?? DateTime.now(),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime.now(),
+                                  );
+                                  if (picked != null) setState(() => _toDate = picked);
+                                },
+                              ),
+                              IconButton(
+                                tooltip: 'Réinitialiser dates',
+                                onPressed: () => setState(() {
+                                  _fromDate = null;
+                                  _toDate = null;
+                                }),
+                                icon: const Icon(Icons.clear),
+                              ),
+                            ],
+                          ),
                         ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, _) {
-                              final i = value.toInt();
-                              if (i >= 0 && i < chartData.length) {
-                                return Text(chartData[i].key, style: const TextStyle(fontSize: 10));
-                              }
-                              return const SizedBox.shrink();
+                      ),
+                      const SizedBox(height: 12),
+                      // Liste
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: ListView.separated(
+                            key: ValueKey(sessions.hashCode),
+                            itemCount: sessions.length,
+                            separatorBuilder: (_, __) => const Divider(height: 0),
+                            itemBuilder: (context, i) {
+                              final s = sessions[i];
+                              return ListTile(
+                                leading: Icon(_iconFor(s['type'])),
+                                title: Text(_labelFor(s['type'])),
+                                subtitle: Text(
+                                  'Début : ${_fmtLong.format(DateTime.parse(s['started_at']))}\n'
+                                  'Fin   : ${_fmtLong.format(DateTime.parse(s['ended_at']))}',
+                                ),
+                              );
                             },
                           ),
                         ),
                       ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: chartData
-                          .asMap()
-                          .entries
-                          .map(
-                            (e) => BarChartGroupData(
-                              x: e.key,
-                              barRods: [
-                                BarChartRodData(toY: e.value.value.toDouble(), width: 14),
-                              ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 24),
+
+                // ------ GRAPHIQUE  ------
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Material(
+                      key: ValueKey(chartData.hashCode),
+                      elevation: 2,
+                      borderRadius: BorderRadius.circular(16),
+                      color: Theme.of(context).colorScheme.surfaceVariant,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: BarChart(
+                          BarChartData(
+                            alignment: BarChartAlignment.spaceAround,
+                            barTouchData: BarTouchData(enabled: false),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, _) {
+                                    final i = value.toInt();
+                                    if (i >= 0 && i < chartData.length) {
+                                      return Text(chartData[i].key, style: const TextStyle(fontSize: 10));
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
+                              ),
                             ),
-                          )
-                          .toList(),
+                            borderData: FlBorderData(show: false),
+                            barGroups: chartData
+                                .asMap()
+                                .entries
+                                .map(
+                                  (e) => BarChartGroupData(
+                                    x: e.key,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: e.value.value.toDouble(),
+                                        width: 14,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  IconData _iconFor(String type) => switch (type) {
-        'focus' => Icons.work,
+  // ------------------ UTILITAIRES UI ------------------
+  Future<void> _exportCsv(TimerService timer) async {
+    final data = await timer.fetchSessionHistory();
+    final rows = [
+      ['Type', 'Début', 'Fin'],
+      ...data.map((s) => [s['type'], s['started_at'], s['ended_at']]),
+    ];
+    final csv = const ListToCsvConverter().convert(rows);
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/sessions_export.csv');
+    await file.writeAsString(csv);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Exporté : ${file.path}')),
+      );
+    }
+  }
+
+  Future<void> _confirmAndDelete(TimerService timer) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Effacer toutes les sessions ?'),
+        content: const Text('Cette action est irréversible.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await timer.deleteAllSessions();
+      if (context.mounted) setState(() {}); // refresh
+    }
+  }
+
+  IconData _iconFor(String? t) => switch (t) {
+        'focus'      => Icons.work,
         'shortBreak' => Icons.coffee,
-        'longBreak' => Icons.self_improvement,
-        _ => Icons.help_outline,
+        'longBreak'  => Icons.self_improvement,
+        _            => Icons.help_outline,
       };
 
-  String _labelFor(String type) => switch (type) {
-        'focus' => 'Travail',
+  String _labelFor(String? t) => switch (t) {
+        'focus'      => 'Travail',
         'shortBreak' => 'Pause courte',
-        'longBreak' => 'Pause longue',
-        _ => 'Inconnu',
+        'longBreak'  => 'Pause longue',
+        _            => 'Inconnu',
       };
+}
+
+// Petit bouton Material 3 pour date picker
+class _DateButton extends StatelessWidget {
+  const _DateButton({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: const Icon(Icons.calendar_today, size: 16),
+      label: Text(label),
+    );
+  }
 }

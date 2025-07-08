@@ -555,15 +555,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           tooltip: "Historique",
         ),
         const SizedBox(height: 16),
-        // Bouton statistiques
-        IconButton(
-          onPressed: () {
-            context.go('/stats');
-          },
-          icon: const Icon(Icons.bar_chart, color: Colors.blue),
-          tooltip: "Statistiques",
-        ),
-        const SizedBox(height: 16),
         // Bouton déconnexion
         IconButton(
           icon: const Icon(Icons.logout),

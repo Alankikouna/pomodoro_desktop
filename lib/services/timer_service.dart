@@ -227,4 +227,26 @@ class TimerService extends ChangeNotifier {
     isRunning = false;
     notifyListeners();
   }
+
+  /// Supprime toutes les sessions de l'utilisateur connecté dans Supabase
+  Future<void> deleteAllSessions() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    await Supabase.instance.client
+        .from('pomodoro_sessions')
+        .delete()
+        .eq('user_id', userId);
+  }
+
+  /// Supprime les sessions comprises entre deux dates (incluses) pour l'utilisateur connecté
+  Future<void> deleteSessionsBetween(DateTime from, DateTime to) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    await Supabase.instance.client
+        .from('pomodoro_sessions')
+        .delete()
+        .eq('user_id', userId)
+        .gte('started_at', from.toIso8601String())
+        .lte('started_at', to.toIso8601String());
+  }
 }
