@@ -4,7 +4,6 @@ import 'package:provider/provider.dart' as provider;
 import '../services/timer_service.dart';
 import '../widgets/circular_timer_display.dart';
 import '../models/pomodoro_settings.dart';
-import '../services/app_blocker_service.dart';
 import 'package:confetti/confetti.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,6 +12,7 @@ import 'dart:math';
 import 'package:go_router/go_router.dart';
 import '../services/theme_service.dart';
 import 'history_screen.dart'; // Ajoute l’import de la nouvelle page
+
 
 /// Écran principal affichant le minuteur Pomodoro, les boutons de session, les réglages et la déconnexion
 class HomeScreen extends StatefulWidget {
@@ -437,57 +437,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Affiche la boîte de dialogue pour gérer la liste des applications bloquées.
-  void _showBlockedAppsDialog(BuildContext context) {
-    final blocker = AppBlockerService.instance;
-    final controller = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text("Applications bloquées"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Liste des apps bloquées avec suppression possible
-              for (final app in blocker.bannedApps)
-                ListTile(
-                  title: Text(app),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: () {
-                      blocker.bannedApps.remove(app);
-                      setState(() {});
-                    },
-                  ),
-                ),
-              // Champ pour ajouter une nouvelle app
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(hintText: "Nom du processus (ex: Discord.exe)"),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Fermer"),
-            ),
-            TextButton(
-              onPressed: () {
-                blocker.bannedApps.add(controller.text);
-                controller.clear();
-                setState(() {});
-              },
-              child: const Text("Ajouter"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// Déconnecte l'utilisateur et redirige vers la page d'authentification.
   void _logout(BuildContext context) async {
     await Supabase.instance.client.auth.signOut();
@@ -536,21 +485,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           tooltip: "Modifier durées",
         ),
         const SizedBox(height: 16),
-        // Bouton apps bloquées
+        // Bouton apps bloquées (via GoRouter)
         IconButton(
-          onPressed: () => _showBlockedAppsDialog(context),
+          onPressed: () => context.go('/blocker'),
           icon: const Icon(Icons.block, color: Colors.black87),
           tooltip: "Apps bloquées",
         ), 
         const SizedBox(height: 16),
-        // Bouton historique
+        // Bouton historique (via GoRouter)
         IconButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const HistoryScreen()),
-            );
-          },
+          onPressed: () => context.go('/history'),
           icon: const Icon(Icons.history, color: Colors.deepOrange),
           tooltip: "Historique",
         ),

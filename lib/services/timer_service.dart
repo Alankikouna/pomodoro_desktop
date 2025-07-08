@@ -6,75 +6,70 @@ import 'notification_service.dart';
 import 'app_blocker_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-
-/// Types de session Pomodoro
 enum PomodoroSessionType { focus, shortBreak, longBreak }
 
-
-/// Service principal pour gérer le minuteur Pomodoro, les notifications et le blocage d'applications
 class TimerService extends ChangeNotifier {
-  /// Paramètres utilisateur pour les durées des sessions
+  /* ─────────── PARAMÈTRES ─────────── */
   PomodoroSettings settings = PomodoroSettings(
     focusDuration: 25,
     shortBreakDuration: 5,
     longBreakDuration: 15,
-    longBreakEveryX: 4, // Ajout de la valeur par défaut pour longBreakEveryX
+    longBreakEveryX: 4,
   );
 
-  Timer? _timer; // Timer du compte à rebours
-  Duration _currentDuration = const Duration(minutes: 25); // Durée restante
-  final Duration _totalDuration = const Duration(minutes: 25); // Durée totale de la session
+  PomodoroSessionType sessionType = PomodoroSessionType.focus;
+  Duration _currentDuration = const Duration(minutes: 25);
+  Duration get currentDuration => _currentDuration;
+  Duration get totalDuration =>
+      Duration(minutes: _minutesForType(sessionType, settings));
 
-  bool isRunning = false; // Indique si le minuteur est en cours
-  PomodoroSessionType sessionType = PomodoroSessionType.focus; // Type de session actuelle
-  final AppBlockerService _blocker = AppBlockerService.instance; // Service de blocage d'apps
+  Timer? _timer;
+  bool isRunning = false;
+
+  final AppBlockerService _blocker = AppBlockerService.instance;
+
   DateTime? _sessionStart;
-  int _sessionCount = 0; // Compte les cycles focus
+  int _sessionCount = 0;
 
-  /// Constructeur : initialise la durée selon le type de session
   TimerService() {
     _setInitialDuration();
   }
 
-
-  /// Durée restante de la session en cours
-  Duration get currentDuration => _currentDuration;
-  /// Durée totale de la session
-  Duration get totalDuration => _totalDuration;
-
-
-  /// Définit la durée initiale selon le type de session
+  /* ─────────── INITIALISATION ─────────── */
   void _setInitialDuration() {
-    switch (sessionType) {
-      case PomodoroSessionType.focus:
-        _currentDuration = Duration(minutes: settings.focusDuration);
-        break;
-      case PomodoroSessionType.shortBreak:
-        _currentDuration = Duration(minutes: settings.shortBreakDuration);
-        break;
-      case PomodoroSessionType.longBreak:
-        _currentDuration = Duration(minutes: settings.longBreakDuration);
-        break;
-    }
+    _currentDuration =
+        Duration(minutes: _minutesForType(sessionType, settings));
     notifyListeners();
   }
 
-  /// Démarre le minuteur Pomodoro, bloque les apps et programme les notifications
+  static int _minutesForType(
+      PomodoroSessionType type, PomodoroSettings settings) {
+    switch (type) {
+      case PomodoroSessionType.focus:
+        return settings.focusDuration;
+      case PomodoroSessionType.shortBreak:
+        return settings.shortBreakDuration;
+      case PomodoroSessionType.longBreak:
+        return settings.longBreakDuration;
+    }
+  }
+
+  /* ─────────── DÉMARRER / ARRÊTER ─────────── */
   void startTimer() {
     if (isRunning) return;
     isRunning = true;
     _sessionStart = DateTime.now();
-    _blocker.startMonitoring(); // Active le blocage d'applications
 
-    // Notification immédiate de début de session
+    // Blocage uniquement si session Focus
+    _blocker.toggleMonitoring(sessionType == PomodoroSessionType.focus);
+
+    // Notifications
     NotificationService().showImmediateNotification(
       title: "Session démarrée",
       body: sessionType == PomodoroSessionType.focus
           ? "Travaille dur pendant ${settings.focusDuration} minutes !"
-          : "Profite de ta pause :)",
+          : "Profite de ta pause 🙂",
     );
-
-    // Notification programmée pour la fin de session
     NotificationService().scheduleNotification(
       title: "Session terminée",
       body: sessionType == PomodoroSessionType.focus
@@ -83,7 +78,7 @@ class TimerService extends ChangeNotifier {
       delay: _currentDuration,
     );
 
-    // Décrémente la durée chaque seconde
+    // Tick 1 s
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_currentDuration.inSeconds > 0) {
         _currentDuration -= const Duration(seconds: 1);
@@ -91,14 +86,12 @@ class TimerService extends ChangeNotifier {
       } else {
         stopTimer();
 
-        // Ajoute la logique de passage automatique
+        // Enchaîne automatiquement
         if (sessionType == PomodoroSessionType.focus) {
           _sessionCount++;
-          if (_sessionCount % settings.longBreakEveryX == 0) {
-            startLongBreak();
-          } else {
-            startShortBreak();
-          }
+          (_sessionCount % settings.longBreakEveryX == 0)
+              ? startLongBreak()
+              : startShortBreak();
         } else {
           startFocus();
         }
@@ -106,85 +99,87 @@ class TimerService extends ChangeNotifier {
     });
   }
 
-
-  /// Arrête le minuteur et le blocage d'applications
   void stopTimer() {
     _timer?.cancel();
     _timer = null;
     isRunning = false;
-    _blocker.stopMonitoring();
-    // Log la session si elle vient de se terminer
+
+    // Désactive toujours le blocage en fin de session
+    _blocker.toggleMonitoring(false);
+
+    // Log si la session est allée jusqu’au bout
     if (_sessionStart != null && _currentDuration.inSeconds == 0) {
-      logSessionToSupabase(_sessionStart!, DateTime.now());
+      logSessionToSupabase(_sessionStart!, DateTime.now(), sessionType);
     }
     notifyListeners();
   }
 
-
-  /// Réinitialise le minuteur à la durée initiale de la session
   void resetTimer() {
     stopTimer();
     _setInitialDuration();
   }
 
+  /// Met en pause le minuteur Pomodoro en cours.
+  void pause() {
+    _timer?.cancel();
+    _timer = null;
+    isRunning = false;
+    // Désactive le blocage d'applications pendant la pause
+    _blocker.toggleMonitoring(false);
+    notifyListeners();
+  }
 
-  /// Change le type de session (focus, pause courte, pause longue)
-  void switchSession(PomodoroSessionType type) {
-    stopTimer();
-    sessionType = type;
+  /* ─────────── CHANGEMENT DE SESSION ─────────── */
+  void switchSession(PomodoroSessionType newType) {
+    sessionType = newType;
     _setInitialDuration();
+    _blocker.toggleMonitoring(newType == PomodoroSessionType.focus);
   }
 
   void startFocus() {
     sessionType = PomodoroSessionType.focus;
-    _sessionStart = DateTime.now(); // Ajoute ceci
     _setInitialDuration();
     startTimer();
   }
 
   void startShortBreak() {
     sessionType = PomodoroSessionType.shortBreak;
-    _sessionStart = DateTime.now(); // Ajoute ceci
     _setInitialDuration();
     startTimer();
   }
 
   void startLongBreak() {
     sessionType = PomodoroSessionType.longBreak;
-    _sessionStart = DateTime.now(); // Ajoute ceci
     _setInitialDuration();
     startTimer();
   }
 
-
-  /// Charge les paramètres Pomodoro de l'utilisateur depuis Supabase
+  /* ─────────── SUPABASE : SETTINGS & LOGS ─────────── */
   Future<void> loadSettingsFromSupabase() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
 
     try {
-      final response = await Supabase.instance.client
+      final resp = await Supabase.instance.client
           .from('pomodoro_settings')
           .select()
           .eq('user_id', userId)
           .single();
 
-      if (response != null) {
+      if (resp != null) {
         settings = PomodoroSettings(
-          focusDuration: response['focus_duration'],
-          shortBreakDuration: response['short_break_duration'],
-          longBreakDuration: response['long_break_duration'],
-          longBreakEveryX: response['long_break_every_x'] ?? 4, // Ajout de l'argument requis
+          focusDuration: resp['focus_duration'],
+          shortBreakDuration: resp['short_break_duration'],
+          longBreakDuration: resp['long_break_duration'],
+          longBreakEveryX: resp['long_break_every_x'] ?? 4,
         );
-        _setInitialDuration(); // recharge les durées
-        notifyListeners();
+        _setInitialDuration();
       }
-    } catch (e) {
-      // Log optionnel
+    } catch (_) {
+      // ignore : settings par défaut
     }
   }
 
-  /// Sauvegarde les paramètres Pomodoro de l'utilisateur dans Supabase
   Future<void> saveSettingsToSupabase() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
@@ -194,23 +189,23 @@ class TimerService extends ChangeNotifier {
       'focus_duration': settings.focusDuration,
       'short_break_duration': settings.shortBreakDuration,
       'long_break_duration': settings.longBreakDuration,
+      'long_break_every_x': settings.longBreakEveryX,
     });
   }
 
-  /// Enregistre une session terminée dans Supabase
-  Future<void> logSessionToSupabase(DateTime startedAt, DateTime endedAt) async {
+  Future<void> logSessionToSupabase(
+      DateTime start, DateTime end, PomodoroSessionType type) async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
 
     await Supabase.instance.client.from('pomodoro_sessions').insert({
       'user_id': userId,
-      'type': sessionType.name,
-      'started_at': startedAt.toIso8601String(),
-      'ended_at': endedAt.toIso8601String(),
+      'type': type.name,
+      'started_at': start.toIso8601String(),
+      'ended_at': end.toIso8601String(),
     });
   }
 
-  /// Récupère l'historique des sessions depuis Supabase
   Future<List<Map<String, dynamic>>> fetchSessionHistory() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return [];
@@ -222,13 +217,7 @@ class TimerService extends ChangeNotifier {
     return List<Map<String, dynamic>>.from(res);
   }
 
-  void pause() {
-    _timer?.cancel();
-    isRunning = false;
-    notifyListeners();
-  }
-
-  /// Supprime toutes les sessions de l'utilisateur connecté dans Supabase
+  /* ─────────── SUPABASE : SUPPRESSION ─────────── */
   Future<void> deleteAllSessions() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
@@ -238,7 +227,6 @@ class TimerService extends ChangeNotifier {
         .eq('user_id', userId);
   }
 
-  /// Supprime les sessions comprises entre deux dates (incluses) pour l'utilisateur connecté
   Future<void> deleteSessionsBetween(DateTime from, DateTime to) async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;

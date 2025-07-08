@@ -101,6 +101,6 @@ Un bouton permet d’exporter l’historique des sessions au format CSV.
 3. Proposez un Pull Request clair décrivant vos modifications.
 
 ## Auteur
-Alan Riehl
+Alan 
 
 

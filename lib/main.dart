@@ -15,7 +15,7 @@ void main() async {
   );
 
   final themeService = ThemeService();
-  await themeService.loadTheme();
+  await themeService.load();
 
   runApp(
     provider.MultiProvider(
@@ -52,7 +52,7 @@ class PomodoroApp extends StatelessWidget {
           secondary: Color(0xFF03DAC6), // Bleu-vert clair
         ),
       ),
-      themeMode: themeService.materialThemeMode,
+      themeMode: themeService.materialMode,
       routerConfig: appRouter,
     );
   }
