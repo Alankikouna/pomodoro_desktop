@@ -1,106 +1,215 @@
-# ⏱️ Pomodoro Desktop App (Flutter)
+# ⏰ Pomodoro Desktop
 
-Application de gestion du temps basée sur la méthode **Pomodoro**, développée en **Flutter Desktop** pour Windows.  
-Elle combine minuteur, blocage d’applications, notifications, détection d’inactivité et statistiques synchronisées dans Supabase.
+**Pomodoro Desktop** est une application de productivité multiplateforme (principalement Windows) développée avec **Flutter Desktop**. Elle applique la méthode Pomodoro pour améliorer la concentration et propose de nombreuses fonctionnalités modernes : blocage d'applications, authentification Supabase, effets visuels et raccourcis clavier.
 
 ---
 
 ## Sommaire
-1. [Fonctionnalités](#fonctionnalités)
-2. [Structure du projet](#structure-du-projet)
-3. [Installation et exécution](#installation-et-exécution)
-4. [Supabase et données](#supabase-et-données)
-5. [Contribuer](#contribuer)
-6. [Auteur](#auteur)
+1. [Fonctionnalités détaillées](#fonctions)
+2. [Raccourcis clavier](#raccourcis-clavier)
+3. [Structure du projet](#structure-du-projet)
+4. [Installation locale](#installation-locale)
+5. [Génération de l'exécutable](#génération-de-lexécutable)
+6. [Création d'un installateur](#création-dun-installateur)
+7. [Supabase – Structure BDD](#supabase--structure-bdd)
+8. [Roadmap](#roadmap)
+9. [Auteur](#auteur)
 
 ---
 
-## Fonctionnalités
+## 🚀 Fonctionnalités détaillées
 
-- **Minuteur complet** (Focus, pause courte, pause longue) avec enchaînement automatique.
-- **Personnalisation des durées** via une fenêtre de réglages (stockées dans Supabase).
-- **Notifications toast** et **son** à la fin d’une session (`flutter_local_notifications`, `audioplayers`).
-- **Blocage d’applications** distrayantes (liste d’exécutables surveillés et fermés toutes les 10 s).
-- **Détection d’inactivité** : rappel après 5 minutes sans interaction.
-- **Statistiques détaillées** (historique, graphiques avec `fl_chart`, export CSV).
-- **Onboarding et authentification** (Supabase).
-- **Thème clair/sombre/système** mémorisé dans `shared_preferences`.
-- **Raccourcis clavier** : Espace pour démarrer/stopper, `R` pour réinitialiser.
-- **Animations confettis** et **Pokémon aléatoire** à la fin d’une session réussie.
-- **Script NSIS** pour générer un installeur Windows.
+### 🎯 Gestion des sessions Pomodoro
+- 3 types de sessions : `Focus`, `Pause Courte`, `Pause Longue`.
+- Enchaînement automatique (par exemple : 4 Focus ➜ Pause longue).
+- Minuteur personnalisable pour chaque utilisateur.
+
+### 👤 Authentification via Supabase
+- Inscription et connexion par email.
+- Paramètres et historique attachés à l'utilisateur.
+
+### 🔒 Blocage d'applications `.exe`
+- Liste des processus actifs filtrés.
+- Ajout automatique ou manuel d'applications à bloquer.
+- Surveillance continue durant les périodes de focus.
+- Liste des applications bannies modifiable.
+
+### ⚙️ Paramètres sauvegardés
+- Durées de Focus/Pause entièrement modifiables.
+- Définition de la fréquence des pauses longues.
+- Synchronisation des réglages dans Supabase.
+
+### 📚 Historique des sessions
+- Sauvegarde du début et de la fin de chaque session.
+- Visualisation et export CSV de l'historique.
+- Suppression par plage ou complète.
+
+### ✨ Expérience utilisateur
+- Confettis et sons à la fin d'un Pomodoro.
+- Apparition aléatoire de Pokémon (gifs).
+- Thème clair ou sombre mémorisé localement.
+- Animations modernes.
 
 ---
 
-## Structure du projet
-```
+## ⌨️ Raccourcis clavier
+
+| Raccourci | Action                          |
+|----------|----------------------------------|
+| `Espace` | Démarrer / Pause                 |
+| `R`      | Réinitialiser le timer           |
+| `1`      | Session de Focus                 |
+| `2`      | Pause courte                     |
+| `3`      | Pause longue                     |
+| `S`      | Ouvrir les Paramètres            |
+| `?`      | Afficher la fiche d'aide         |
+
+---
+
+## 🧱 Structure du projet
+
+```bash
 lib/
-├── main.dart # Démarrage de l’app et initialisation Supabase
-├── router.dart # Navigation avec GoRouter
-├── screens/ # Interfaces (auth, onboarding, home, stats…)
-│ ├── splash_screen.dart
-│ ├── onboarding_screen.dart
-│ ├── auth_screen.dart
-│ ├── signup_screen.dart
-│ ├── home_screen.dart
-│ ├── statistics_screen.dart
-│ └── app_blocker_settings_dialog.dart
-├── services/ # Logique métier
-│ ├── timer_service.dart
-│ ├── notification_service.dart
-│ ├── app_blocker_service.dart
-│ ├── activity_service.dart
-│ └── theme_service.dart
+├── main.dart
 ├── models/
-│ └── pomodoro_settings.dart # Paramètres utilisateur
+│   └── pomodoro_settings.dart
+├── screens/
+│   ├── app_blocker_screen.dart
+│   ├── auth_screen.dart
+│   ├── history_screen.dart
+│   ├── home_screen.dart
+│   ├── onboarding_screen.dart
+│   ├── signup_screen.dart
+│   └── splash_screen.dart
+├── services/
+│   ├── app_blocker_service.dart
+│   ├── notification_service.dart
+│   └── timer_service.dart
 ├── widgets/
-│ ├── circular_timer_display.dart
-│ └── timer_display.dart
-└── assets/
-├── sounds/success.mp3
-└── gif/ (animations Pokémon)
-
-test/ # Exemple de test Flutter
-pomodoro_installer.nsi # Script d’installation Windows (NSIS)
-analysis_options.yaml # Règles de lint
+│   ├── exe_tile.dart
+│   ├── header_theme_menu.dart
+│   ├── help_dialog.dart
+│   ├── home_sidebar.dart
+│   ├── session_tile.dart
+│   ├── settings_dialog.dart
+│   ├── shiny_overlay.dart
+│   └── timer_area.dart
 ```
-
 
 ---
 
-## Installation et exécution
+## ⚙️ Installation locale
 
-1. **Prérequis** : Flutter SDK (canal stable) avec support Windows activé.
-2. Clonez le dépôt puis installez les dépendances :
-   ```bash
-   flutter pub get
-   ```
-3. Lancement en mode développement (Windows) :
-    ```bash
-    flutter run -d windows
-    ```
-4. Génération de l’exécutable :
-    ```bash
-    flutter build windows
-    ```
-5. Création de l’installeur (nécessite NSIS) :
-    ```bash
-    makensis pomodoro_installer.nsi
-    ```
-## Supabase et données
-L’application utilise Supabase pour l’authentification et la sauvegarde des réglages et sessions.
-Les identifiants sont actuellement déclarés dans lib/main.dart; pour un déploiement réel, il est recommandé de les stocker dans des variables d’environnement ou un fichier non suivi par Git.
+### Prérequis
+- Flutter SDK (version stable)
+- Windows 10/11
+- Dart \>= 3.0
+- Compte Supabase avec les tables `pomodoro_settings` et `pomodoro_sessions`
 
-Les statistiques sont récupérées via TimerService.fetchSessionHistory() et affichées dans StatisticsScreen.
-Un bouton permet d’exporter l’historique des sessions au format CSV.
+### Étapes
 
-## Contribuer
-1. Forkez ce dépôt et créez votre branche de travail.
+```bash
+git clone https://github.com/ton-user/pomodoro_desktop.git
+cd pomodoro_desktop
+flutter pub get
+flutter run -d windows
+```
 
-2. Assurez-vous de respecter les règles de lint (flutter analyze).
+---
 
-3. Proposez un Pull Request clair décrivant vos modifications.
+## 🛠️ Génération de l'exécutable `.exe`
 
-## Auteur
-Alan 
+```bash
+flutter build windows
+```
 
+L'exécutable se trouvera dans : `build/windows/runner/Release/pomodoro_desktop.exe`
 
+---
+
+## 📦 Création d'un installateur Windows
+
+### 🧰 Option 1 : NSIS (recommandé)
+
+1. Installer [NSIS](https://nsis.sourceforge.io/Download).
+2. Compiler un script `.nsi` tel que :
+
+```nsi
+Outfile "PomodoroInstaller.exe"
+InstallDir "$PROGRAMFILES\Pomodoro Desktop"
+RequestExecutionLevel admin
+
+Section
+  SetOutPath $INSTDIR
+  File /r "build\windows\runner\Release\*.*"
+  CreateShortCut "$DESKTOP\Pomodoro.lnk" "$INSTDIR\pomodoro_desktop.exe"
+SectionEnd
+```
+
+3. Lancer la compilation avec l'outil **Compile NSI script**.
+
+### 📦 Option 2 : Inno Setup
+
+1. Télécharger [Inno Setup](https://jrsoftware.org/isdl.php).
+2. Utiliser ce script `.iss` :
+
+```iss
+[Setup]
+AppName=Pomodoro Desktop
+AppVersion=1.0
+DefaultDirName={pf}\Pomodoro Desktop
+DefaultGroupName=Pomodoro Desktop
+OutputDir=dist
+OutputBaseFilename=PomodoroInstaller
+Compression=lzma
+SolidCompression=yes
+
+[Files]
+Source: "build\windows\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs
+
+[Icons]
+Name: "{group}\Pomodoro Desktop"; Filename: "{app}\pomodoro_desktop.exe"
+```
+
+3. Compiler avec l'éditeur Inno Setup.
+
+---
+
+## 🧮 Supabase – Structure BDD
+
+### `pomodoro_settings`
+
+| Colonne              | Type    | Description                           |
+|----------------------|---------|---------------------------------------|
+| `user_id`            | UUID    | Clé primaire (utilisateur)            |
+| `focus_duration`     | Integer | Durée Focus en minutes                |
+| `short_break_duration` | Integer | Durée de la pause courte              |
+| `long_break_duration`  | Integer | Durée de la pause longue              |
+| `long_break_every_x` | Integer | Nombre de Focus avant une longue pause |
+
+### `pomodoro_sessions`
+
+| Colonne     | Type      | Description                          |
+|-------------|-----------|--------------------------------------|
+| `user_id`   | UUID      | Référence à l'utilisateur            |
+| `type`      | text      | `focus` / `shortBreak` / `longBreak` |
+| `started_at`| timestamp | Début de la session                  |
+| `ended_at`  | timestamp | Fin de la session                    |
+
+---
+
+## 📈 Roadmap
+
+- [ ] Statistiques visuelles (heatmaps, graphiques)
+- [ ] Mode hors ligne avec persistance locale
+- [ ] Blocage d'applications macOS / Linux
+- [ ] Thèmes et gifs personnalisables
+- [ ] Gestion multicomptes
+
+---
+
+## 👨‍💻 Auteur
+
+Développé par **Alan Riehl**
+
+Licence : MIT
