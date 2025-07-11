@@ -55,11 +55,12 @@ Future<void> showSettingsDialog(BuildContext context, PomodoroSettings settings,
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).pop(), // ferme la boîte
             child: const Text("Annuler"),
           ),
           TextButton(
             onPressed: () async {
+              // Enregistre les paramètres
               settings.focusDuration = int.tryParse(focusCtrl.text) ?? 25;
               settings.shortBreakDuration = int.tryParse(shortCtrl.text) ?? 5;
               settings.longBreakDuration = int.tryParse(longCtrl.text) ?? 15;
@@ -70,32 +71,22 @@ Future<void> showSettingsDialog(BuildContext context, PomodoroSettings settings,
                 await Supabase.instance.client
                     .from('pomodoro_settings')
                     .upsert({
-                      'user_id': userId,
-                      'focus_duration': settings.focusDuration,
-                      'short_break_duration': settings.shortBreakDuration,
-                      'long_break_duration': settings.longBreakDuration,
-                      'long_break_every_x': settings.longBreakEveryX,
-                    });
+                  'user_id': userId,
+                  'focus_duration': settings.focusDuration,
+                  'short_break_duration': settings.shortBreakDuration,
+                  'long_break_duration': settings.longBreakDuration,
+                  'long_break_every_x': settings.longBreakEveryX,
+                });
               }
 
-              Navigator.pop(context);
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Paramètres enregistrés"),
-                  content: Row(
-                    children: const [
-                      Icon(Icons.check_circle, color: Colors.green, size: 32),
-                      SizedBox(width: 12),
-                      Expanded(child: Text("Les paramètres Pomodoro ont bien été pris en compte.")),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("OK"),
-                    ),
-                  ],
+              Navigator.of(context).pop(); // ferme le dialog principal
+
+              // ✅ Affiche confirmation via SnackBar
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Paramètres Pomodoro enregistrés ✅"),
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 3),
                 ),
               );
             },

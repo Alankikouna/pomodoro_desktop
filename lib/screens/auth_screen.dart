@@ -1,10 +1,10 @@
 // Écran d'authentification (connexion/inscription) avec Supabase
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:go_router/go_router.dart'; // tout en haut du fichier
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart'; // ✅ Import direct sans alias
+import 'package:pomodoro_desktop/services/timer_service.dart';
 
-
-/// Écran permettant à l'utilisateur de se connecter ou de s'inscrire
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -12,15 +12,10 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-
-/// État de l'écran d'authentification : gère la logique de connexion/inscription
 class _AuthScreenState extends State<AuthScreen> {
-  // Contrôleurs pour les champs email et mot de passe
   final emailCtrl = TextEditingController();
   final passwordCtrl = TextEditingController();
-  // Instance du client Supabase
   final client = Supabase.instance.client;
-  // Indique si une requête est en cours
   bool _isLoading = false;
 
   @override
@@ -30,18 +25,17 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  /// Tente de se connecter, sinon inscrit l'utilisateur
   Future<void> _signInOrSignUp() async {
     setState(() => _isLoading = true);
     try {
       final email = emailCtrl.text.trim();
       final password = passwordCtrl.text.trim();
 
-      // Tente la connexion
+      // Tentative de connexion
       final signIn = await client.auth.signInWithPassword(email: email, password: password);
 
       if (signIn.user == null) {
-        // Connexion échouée, tentative d'inscription
+        // Si connexion échoue, inscription
         final signUp = await client.auth.signUp(email: email, password: password);
         if (signUp.user != null) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -50,25 +44,21 @@ class _AuthScreenState extends State<AuthScreen> {
         }
       }
 
-      // Redirige vers la page d'accueil
-      context.go('/'); // ou '/auth', '/signup', etc. selon la destination
+      // ⏬ Reset l'état local puis recharge depuis Supabase
+      final timerService = context.read<TimerService>();
+      timerService.resetState();
+      await timerService.loadSettingsFromSupabase();
+
+      context.go('/');
     } on AuthException catch (e) {
-      // Affiche le message d'erreur d'authentification
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
-      // Affiche toute autre erreur
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur : ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur : $e')));
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-
-  /// Construit l'interface de connexion/inscription
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,37 +73,28 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      "Connexion",
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
+                    Text("Connexion", style: Theme.of(context).textTheme.headlineMedium),
                     const SizedBox(height: 24),
-                    // Champ email
                     TextField(
                       controller: emailCtrl,
                       decoration: const InputDecoration(labelText: 'Email'),
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 12),
-                    // Champ mot de passe
                     TextField(
                       controller: passwordCtrl,
                       decoration: const InputDecoration(labelText: 'Mot de passe'),
                       obscureText: true,
                     ),
                     const SizedBox(height: 24),
-                    // Bouton de connexion/inscription ou loader
                     _isLoading
                         ? const CircularProgressIndicator()
                         : ElevatedButton(
                             onPressed: _signInOrSignUp,
                             child: const Text("Connexion / Inscription"),
                           ),
-                    // Lien vers la page d'inscription
                     TextButton(
-                      onPressed: () {
-                        context.go('/signup');
-                      },
+                      onPressed: () => context.go('/signup'),
                       child: const Text("Pas encore inscrit ? Créer un compte"),
                     ),
                   ],

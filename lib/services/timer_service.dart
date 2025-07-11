@@ -237,4 +237,18 @@ class TimerService extends ChangeNotifier {
         .gte('started_at', from.toIso8601String())
         .lte('started_at', to.toIso8601String());
   }
+
+  /// Réinitialise complètement l'état du TimerService après déconnexion.
+  void resetState() {
+    stopTimer();
+    settings = PomodoroSettings(
+      focusDuration: 25,
+      shortBreakDuration: 5,
+      longBreakDuration: 15,
+      longBreakEveryX: 4,
+    );
+    sessionType = PomodoroSessionType.focus;
+    _setInitialDuration();
+    notifyListeners();
+  }
 }
