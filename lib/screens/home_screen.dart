@@ -1,16 +1,16 @@
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart' as provider; 
-import '../services/timer_service.dart';
-import 'package:confetti/confetti.dart';
-import 'package:audioplayers/audioplayers.dart';
-
 import 'dart:math';
-import '../widgets/home_sidebar.dart';
-import '../widgets/timer_area.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:confetti/confetti.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../services/timer_service.dart';
 import '../widgets/header_theme_menu.dart';
+import '../widgets/home_sidebar.dart';
 import '../widgets/settings_dialog.dart';
-
+import '../widgets/timer_area.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final Animation<Offset> _labelOffsetAnimation;
   late final ConfettiController _confettiController;
   final _audioPlayer = AudioPlayer();
-  final FocusNode _focusNode = FocusNode();
+  final _focusNode = FocusNode();
 
   bool _showTiplouf = false;
   final List<_PokemonGif> _pokemons = [
@@ -90,44 +90,84 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pomodoro Desktop'),
-        actions: const [HeaderThemeMenu()],
-      ),
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Focus(
-        focusNode: _focusNode,
-        autofocus: true,
-        child: Row(
-          children: [
-            HomeSidebar(
-              current: timer.sessionType,
-              onSwitch: timer.switchSession,
-              onSettings: () => showSettingsDialog(context, timer.settings, timer), 
-            ),
-            Expanded(
-              child: Center(
-                child: TimerArea(
-                  current: timer.currentDuration,
-                  total: timer.totalDuration,
-                  type: timer.sessionType,
-                  showPokemon: _showTiplouf,
-                  pokemonGif: _currentPokemonGif,
-                  confetti: _confettiController,
-                  reset: timer.resetTimer,
-                  playPause: timer.isRunning ? timer.stopTimer : timer.startTimer,
-                  isRunning: timer.isRunning,
+    return Shortcuts(
+      shortcuts: <LogicalKeySet, Intent>{
+        LogicalKeySet(LogicalKeyboardKey.space): const StartPauseIntent(),
+        LogicalKeySet(LogicalKeyboardKey.keyR): const ResetIntent(),
+        LogicalKeySet(LogicalKeyboardKey.digit1): const SwitchToFocusIntent(),
+        LogicalKeySet(LogicalKeyboardKey.digit2): const SwitchToShortBreakIntent(),
+        LogicalKeySet(LogicalKeyboardKey.digit3): const SwitchToLongBreakIntent(),
+        LogicalKeySet(LogicalKeyboardKey.keyS): const OpenSettingsIntent(),
+        LogicalKeySet(LogicalKeyboardKey.keyB): const OpenBlockerIntent(),
+        LogicalKeySet(LogicalKeyboardKey.keyH): const OpenHistoryIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          StartPauseIntent: CallbackAction(onInvoke: (_) {
+            timer.isRunning ? timer.stopTimer() : timer.startTimer();
+            return null;
+          }),
+          ResetIntent: CallbackAction(onInvoke: (_) {
+            timer.resetTimer();
+            return null;
+          }),
+          SwitchToFocusIntent: CallbackAction(
+              onInvoke: (_) => timer.switchSession(PomodoroSessionType.focus)),
+          SwitchToShortBreakIntent: CallbackAction(
+              onInvoke: (_) => timer.switchSession(PomodoroSessionType.shortBreak)),
+          SwitchToLongBreakIntent: CallbackAction(
+              onInvoke: (_) => timer.switchSession(PomodoroSessionType.longBreak)),
+          OpenSettingsIntent: CallbackAction(onInvoke: (_) {
+            showSettingsDialog(context, timer.settings, timer);
+            return null;
+          }),
+          OpenBlockerIntent: CallbackAction(onInvoke: (_) {
+            context.go('/blocker');
+            return null;
+          }),
+          OpenHistoryIntent: CallbackAction(onInvoke: (_) {
+            context.go('/history');
+            return null;
+          }),
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Pomodoro Desktop'),
+            actions: const [HeaderThemeMenu()],
+          ),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: Focus(
+            focusNode: _focusNode,
+            autofocus: true,
+            child: Row(
+              children: [
+                HomeSidebar(
+                  current: timer.sessionType,
+                  onSwitch: timer.switchSession,
+                  onSettings: () => showSettingsDialog(context, timer.settings, timer),
                 ),
-              ),
-            )
-          ],
+                Expanded(
+                  child: Center(
+                    child: TimerArea(
+                      current: timer.currentDuration,
+                      total: timer.totalDuration,
+                      type: timer.sessionType,
+                      showPokemon: _showTiplouf,
+                      pokemonGif: _currentPokemonGif,
+                      confetti: _confettiController,
+                      reset: timer.resetTimer,
+                      playPause: timer.isRunning ? timer.stopTimer : timer.startTimer,
+                      isRunning: timer.isRunning,
+                    ),
+                  ),
+                )
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
-
-
 
   String _pickRandomPokemon() {
     final total = _pokemons.fold<int>(0, (sum, p) => sum + p.chance);
@@ -141,6 +181,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     return _pokemons.first.assetPath;
   }
+}
+
+// Raccourcis clavier personnalisés
+class StartPauseIntent extends Intent {
+  const StartPauseIntent();
+}
+
+class ResetIntent extends Intent {
+  const ResetIntent();
+}
+
+class SwitchToFocusIntent extends Intent {
+  const SwitchToFocusIntent();
+}
+
+class SwitchToShortBreakIntent extends Intent {
+  const SwitchToShortBreakIntent();
+}
+
+class SwitchToLongBreakIntent extends Intent {
+  const SwitchToLongBreakIntent();
+}
+
+class OpenSettingsIntent extends Intent {
+  const OpenSettingsIntent();
+}
+
+class OpenBlockerIntent extends Intent {
+  const OpenBlockerIntent();
+}
+
+class OpenHistoryIntent extends Intent {
+  const OpenHistoryIntent();
 }
 
 class _PokemonGif {
